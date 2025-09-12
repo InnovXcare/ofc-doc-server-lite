@@ -1,0 +1,112 @@
+{
+  "log": {
+    "filePath": "",
+    "options": {
+      "replaceConsole": true
+    }
+  },
+  "storage": {
+    "name": "storage-fs",
+    "fs": {
+      "folderPath": "/tmp/onlyoffice-converter",
+      "urlExpires": 900,
+      "secretString": "OUR_SECRET_LATER_TO_BE_ADDED_MAYBE"
+    }
+  },
+  "services": {
+    "CoAuthoring": {
+      "server": {
+        "port": 8000,
+        "mode": "development",
+        "limits_tempfile_upload": 52428800,
+        "limits_image_size": 26214400,
+        "savetimeoutdelay": 5000,
+        "maxRequestChanges": 20000,
+        "openProtectedFile": true,
+        "assemblyFormatAsOrigin": true,
+        "tokenRequiredParams": false
+      },
+      "requestDefaults": {
+        "headers": {
+          "User-Agent": "only-office-doc-server-lite",
+          "Connection": "Keep-Alive"
+        },
+        "rejectUnauthorized": false
+      },
+      "utils": {
+        "utils_common_fontdir": "/opt/core-fonts",
+        "utils_fonts_search_patterns": "*.ttf;*.ttc;*.otf"
+      },
+      "secret": {
+        "inbox": { "string": "secret" },
+        "outbox": { "string": "secret" },
+        "session": { "string": "secret" }
+      },
+      "token": {
+        "enable": {
+          "browser": false,
+          "request": {
+            "inbox": false,
+            "outbox": false
+          }
+        }
+      }
+    }
+  },
+  "FileConverter": {
+    "converter": {
+      "maxDownloadBytes": 52428800,
+      "downloadTimeout": {
+        "connectionAndInactivity": "30s",
+        "wholeCycle": "60s"
+      },
+      "downloadAttemptMaxCount": 2,
+      "downloadAttemptDelay": 1000,
+      "maxprocesscount": 1,
+      "fontDir": "/opt/core-fonts",
+      "presentationThemesDir": "/opt/core-fonts",
+      "x2tPath": "/opt/bin/x2t",
+      "docbuilderPath": "/opt/bin/docbuilder",
+      "args": "",
+      "spawnOptions": {
+        "timeout": 120000
+      },
+      "errorfiles": "/tmp/onlyoffice-converter/error",
+      "streamWriterBufferSize": 4194304,
+      "inputLimits": [
+        {
+          "type": "docx;dotx;docm;dotm",
+          "zip": {
+            "uncompressed": "25MB",
+            "template": "*.xml"
+          }
+        },
+        {
+          "type": "xlsx;xltx;xlsm;xltm",
+          "zip": {
+            "uncompressed": "50MB",
+            "template": "*.xml"
+          }
+        },
+        {
+          "type": "pptx;ppsx;potx;pptm;ppsm;potm",
+          "zip": {
+            "uncompressed": "25MB",
+            "template": "*.xml"
+          }
+        }
+      ]
+    }
+  },
+  "tenants": {
+    "baseDir": "",
+    "baseDomain": "",
+    "defaultTenant": "localhost"
+  },
+  "externalRequest": {
+    "action": {
+      "allow": true,
+      "blockPrivateIP": false
+    }
+  }
+}
