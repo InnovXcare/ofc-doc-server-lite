@@ -16,11 +16,20 @@ FROM onlyoffice/documentserver:latest AS extractor
 RUN apt-get update && apt-get install -y \
     curl \
     zip \
-    && rm-rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/*
 
 
 # creating a extraction directory for components to be copied in stage 2
 RUN mkdir -p /extract
+
+# Debug: Check what exists in the OnlyOffice container
+RUN echo "=== CHECKING ONLYOFFICE STRUCTURE ===" && \
+    ls -la /var/www/onlyoffice/ && \
+    ls -la /var/www/onlyoffice/documentserver/ && \
+    ls -la /var/www/onlyoffice/documentserver/server/ && \
+    find /var/www/onlyoffice/documentserver/server -name "*.js" | head -10 && \
+    echo "=== END CHECK ==="
+
 
 
 # extract x2t and docbuilder binaries with dependencies
@@ -33,12 +42,31 @@ RUN cp -r /var/www/onlyoffice/documentserver/server/FileConverter/bin /extract/ 
     # searching OnlyOffice core fonts directory and for each match recursively copy the found directory + also handling if stderr [file descriptor 2] to blackhole [NON BLOCKING]
     find /var/www/onlyoffice -name "core-fonts" -type d -exec cp -r {} /extract/ \; 2>/dev/null || true && \
     # copying server components that we need to destination --> extract/server folder
-    mkdir -p /extract/server && \
-    cp -r /var/www/onlyoffice/documentserver/server/Common /extract/server/ && \
-    cp -r /var/www/onlyoffice/documentserver/server/FileConverter /extract/server/ && \
+    mkdir -p /extract/server/Common/sources && \
+    mkdir -p /extract/server/DocService/sources && \
+    # Copy specific Common source files
+    cp /var/www/onlyoffice/documentserver/server/Common/sources/commondefines.js /extract/server/Common/sources/ 2>/dev/null || true && \
+    cp /var/www/onlyoffice/documentserver/server/Common/sources/operationContext.js /extract/server/Common/sources/ 2>/dev/null || true && \
+    cp /var/www/onlyoffice/documentserver/server/Common/sources/utils.js /extract/server/Common/sources/ 2>/dev/null || true && \
+    cp /var/www/onlyoffice/documentserver/server/Common/sources/formatchecker.js /extract/server/Common/sources/ 2>/dev/null || true && \
+    # Copy specific DocService source files
+    cp /var/www/onlyoffice/documentserver/server/DocService/sources/constants.js /extract/server/DocService/sources/ 2>/dev/null || true && \
+    cp /var/www/onlyoffice/documentserver/server/DocService/sources/utilsDocService.js /extract/server/DocService/sources/ 2>/dev/null || true && \
+    # Copy any package.json files if they exist (for potential dependencies)
+    cp /var/www/onlyoffice/documentserver/server/Common/package.json /extract/server/Common/ 2>/dev/null || true && \
+    cp /var/www/onlyoffice/documentserver/server/DocService/package.json /extract/server/DocService/ 2>/dev/null || true && \
     # copying config files
     mkdir -p /extract/config && \
-    cp -r etc/onlyoffice/documentserver /extract/config/ 2>/dev/null || true
+    cp -r /etc/onlyoffice/documentserver /extract/config/ 2>/dev/null || true
+
+RUN echo "=== CHECKING EXTRACTED FILES ===" && \
+    ls -la /extract/ && \
+    ls -la /extract/server/ && \
+    ls -la /extract/server/Common/ && \
+    ls -la /extract/server/Common/sources/ && \
+    ls -la /extract/server/DocService/ && \
+    ls -la /extract/server/DocService/sources/ && \
+    echo "=== END EXTRACTED CHECK ==="
 
 
 # cleaning up unnecessary files to reduce size
@@ -71,12 +99,22 @@ FROM public.ecr.aws/lambda/nodejs:22 AS lambda
 ENV NODE_CONFIG_DIR=/var/task/config
 
 # copying all extracted components from stage 1
-COPY --from=extractor /extractor/bin ${LAMBDA_RUNTIME_DIR}/bin
-COPY --from=extractor /extractor/lib ${LAMBDA_RUNTIME_DIR}/lib
-COPY --from=extractor /extractor/fonts ${LAMBDA_RUNTIME_DIR}/fonts
-COPY --from=extractor /extractor/core-fonts ${LAMBDA_RUNTIME_DIR}/core-fonts
-COPY --from=extractor /extractor/server %{LAMBDA_RUNTIME_DIR}/server
-COPY --from=extractor /extractor/config ${LAMBDA_RUNTIME_DIR}/config
+COPY --from=extractor /extract/bin ${LAMBDA_RUNTIME_DIR}/bin
+COPY --from=extractor /extract/lib ${LAMBDA_RUNTIME_DIR}/lib
+COPY --from=extractor /extract/fonts ${LAMBDA_RUNTIME_DIR}/fonts
+COPY --from=extractor /extract/core-fonts ${LAMBDA_RUNTIME_DIR}/core-fonts
+COPY --from=extractor /extract/server ${LAMBDA_RUNTIME_DIR}/server
+COPY --from=extractor /extract/config ${LAMBDA_RUNTIME_DIR}/config
+
+# Debug: Check what was copied to the Lambda container
+RUN echo "=== CHECKING LAMBDA CONTAINER STRUCTURE ===" && \
+    ls -la /var/runtime/ && \
+    ls -la /var/runtime/server/ && \
+    ls -la /var/runtime/server/Common/ && \
+    ls -la /var/runtime/server/Common/sources/ && \
+    ls -la /var/runtime/server/DocService/ && \
+    ls -la /var/runtime/server/DocService/sources/ && \
+    echo "=== END LAMBDA CHECK ==="
 
 # copying the lambda handlers and modules
 COPY modules/ ${LAMBDA_TASK_ROOT}/modules
@@ -85,12 +123,13 @@ COPY index.js ${LAMBDA_TASK_ROOT}/index.js
 # copying the config --> default.json [Assuming it will be same throughout the environments]
 COPY config/default.json ${LAMBDA_TASK_ROOT}/config/default.json
 
-# installing node.js dependencies --> Common + FileConverter
+# installing dependencies of common + docService only if package.json exists (much faster now with minimal files)
 WORKDIR ${LAMBDA_RUNTIME_DIR}/server/Common
-RUN npm install --omit=dev
+RUN if [ -f package.json ]; then npm install --omit=dev; else echo "No package.json in Common, skipping npm install"; fi
 
-WORKDIR ${LAMBDA_RUNTIME_DIR}/server/FileConverter
-RUN npm install --omit=dev
+WORKDIR ${LAMBDA_RUNTIME_DIR}/server/DocService
+RUN if [ -f package.json ]; then npm install --omit=dev; else echo "No package.json in DocService, skipping npm install"; fi
+
 
 # copying package.json for lambda function
 WORKDIR ${LAMBDA_TASK_ROOT}

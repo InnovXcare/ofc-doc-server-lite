@@ -4,7 +4,6 @@
   "description": "ONLYOFFICE Document Converter for AWS Lambda",
   "main": "index.js",
   "dependencies": {
-    "aws-sdk": "^3.744.0",
     "@expo/spawn-async": "1.7.2",
     "bytes": "3.1.2",
     "co": "4.6.0",
