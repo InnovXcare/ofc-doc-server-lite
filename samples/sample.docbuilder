@@ -20,6 +20,8 @@ oParagraph.AddText("This is an example document created with ONLYOFFICE Document
 oDocument.Push(oParagraph);
 
 // 7. Save the document to a file named "example.docx"
+builder.SaveFile("rtf", "example.rtf");
+builder.SaveFile("html", "example.html");
 builder.SaveFile("docx", "example.docx");
 builder.SaveFile("pdf", "example.pdf");
 

@@ -1,6 +1,6 @@
 {
   "log": {
-    "filePath": "",
+    "filePath": "/var/task/index.js",
     "options": {
       "replaceConsole": true
     }
@@ -78,7 +78,7 @@
         "rejectUnauthorized": false
       },
       "utils": {
-        "utils_common_fontdir": "/var/runtime/core-fonts",
+        "utils_common_fontdir": "/var/runtime/documentserver/core-fonts",
         "utils_fonts_search_patterns": "*.ttf;*.ttc;*.otf"
       },
       "secret": {
@@ -135,10 +135,10 @@
       "downloadAttemptMaxCount": 2,
       "downloadAttemptDelay": 1000,
       "maxprocesscount": 1,
-      "fontDir": "/var/runtime/core-fonts",
-      "presentationThemesDir": "/var/runtime/core-fonts",
-      "x2tPath": "/var/runtime/bin/x2t",
-      "docbuilderPath": "/var/runtime/bin/docbuilder",
+      "fontDir": "/var/runtime/documentserver/core-fonts",
+      "presentationThemesDir": "/var/runtime/documentserver/core-fonts",
+      "x2tPath": "/var/runtime/documentserver/server/FileConverter/bin/x2t",
+      "docbuilderPath": "/var/runtime/documentserver/server/FileConverter/bin/docbuilder",
       "args": "",
       "spawnOptions": {
         "timeout": 120000

@@ -1,6 +1,8 @@
 /*
 running script example
 /var/www/onlyoffice/documentserver/server/FileConverter/bin/docbuilder /var/www/onlyoffice/documentserver/server/samples/test.docbuilder 
+/var/runtime/documentserver/server/FileConverter/bin/docbuilder /var/task/samples/test.docbuilder
+/var/runtime/documentserver/server/FileConverter/bin/docbuilder /var/task/samples/sample.docbuilder
 */
 
 function rgbToHex(_rgbaColor) {
