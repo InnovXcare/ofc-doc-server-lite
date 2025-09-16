@@ -4,11 +4,11 @@ const fs = require("fs");
 const os = require("os");
 
 // Import required modules from OnlyOffice
-const commonDefines = require("/var/runtime/server/Common/sources/commondefines");
 const operationContext = require("/var/runtime/server/Common/sources/operationContext");
 const utils = require("/var/runtime/server/Common/sources/utils");
 const formatChecker = require("/var/runtime/server/Common/sources/formatchecker");
 const constants = require("/var/runtime/server/DocService/sources/constants");
+const commonDefines = require("/var/runtime/server/DocService/sources/commondefines");
 const utilsDocService = require("/var/runtime/server/DocService/sources/utilsDocService");
 const spawnAsync = require("@expo/spawn-async");
 const config = require("config");
@@ -41,6 +41,20 @@ exports.handler = async (event, context) => {
 
   return co(function* () {
     let ctx = new operationContext.Context();
+    ctx.logger.info("Lambda event:", JSON.stringify(event, null, 2));
+    ctx.logger.info("Current working directory:", process.cwd());
+    ctx.logger.info("Directory contents:", fs.readdirSync(process.cwd()));
+
+    ctx.logger.info(
+      "Checking if samples directory exists:",
+      fs.existsSync("/var/task/samples")
+    );
+    if (fs.existsSync("/var/task/samples")) {
+      ctx.logger.info(
+        "samples directory contents:",
+        fs.readdirSync("/var/task/samples")
+      );
+    }
 
     try {
       // Initialize context for Lambda (without Express req)
@@ -72,7 +86,6 @@ exports.handler = async (event, context) => {
         );
         throw new Error(`Invalid outputType: ${outputType}`);
       }
-
       // Create command
       let docId = "conv_" + params.key + "_" + outputFormat;
       var cmd = new commonDefines.InputCommand();
@@ -108,6 +121,7 @@ exports.handler = async (event, context) => {
           fileTo,
           fromChanges: params?.fromChanges,
         });
+        ctx.logger.info("REACHED_HERE", resData);
 
         console.log("Conversion result:", resData);
 
@@ -402,7 +416,6 @@ TaskQueueDataConvert.prototype = {
   },
 };
 
-// Helper functions from your standalone1.js
 function getTempDir() {
   var tempDir = os.tmpdir();
   var now = new Date();
@@ -489,6 +502,7 @@ function* ExecuteTask(ctx, execObj) {
       )
     ) {
       url = cmd.getUrl();
+
       let withAuthorization = cmd.getWithAuthorization();
       let headers;
       let fileSize;
@@ -508,9 +522,11 @@ function* ExecuteTask(ctx, execObj) {
       error = constants.CONVERT_PARAMS;
     }
   } else if (builderParams) {
+    ctx.logger.info("BUILDER_PARAMS", builderParams);
     console.debug("downloadFileFromStorage complete");
     downloadFile(ctx, url, dataConvert);
   } else {
+    ctx.logger.info("Setting error to unknowm");
     error = constants.UNKNOWN;
   }
 
