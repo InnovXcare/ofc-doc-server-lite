@@ -5,9 +5,7 @@
 # ==============================================================
 
 
-# ***************************************************************** START OF STAGE 1 *********************************************************************
-
-
+# ******** START OF STAGE 1 ********
 
 FROM onlyoffice/documentserver:latest AS extractor
 
@@ -18,36 +16,7 @@ RUN apt-get update && apt-get install -y \
     zip \
     && rm -rf /var/lib/apt/lists/*
 
-
-# creating a extraction directory for components to be copied in stage 2
-RUN mkdir -p /extract
-
-# extract x2t and docbuilder binaries with dependencies
-RUN cp -r /var/www/onlyoffice/documentserver/server/FileConverter/bin /extract/ && \
-    # copying shared libraries and handling if stderr [file descriptor 2] to blackhole [NON BLOCKING]
-    mkdir -p /extract/lib && \
-    cp /var/www/onlyoffice/documentserver/server/FileConverter/bin/*.so* /extract/lib/ 2>/dev/null || true && \
-    # copying fonts
-    cp -r /usr/share/fonts /extract/ && \
-    # searching OnlyOffice core fonts directory and for each match recursively copy the found directory + also handling if stderr [file descriptor 2] to blackhole [NON BLOCKING]
-    find /var/www/onlyoffice -name "core-fonts" -type d -exec cp -r {} /extract/ \; 2>/dev/null || true && \
-    # copying config files
-    mkdir -p /extract/config && \
-    cp -r /etc/onlyoffice/documentserver /extract/config/ 2>/dev/null || true
-
-
-# cleaning up unnecessary files to reduce size
-RUN find /extract -name '*.log' -delete && \
-    find /extract -name '*.tmp' -delete && \
-    find /extract -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
-
-
-
-# ***************************************************************** END OF STAGE 1 *********************************************************************
-
-
-
-
+# ******** END OF STAGE 1 *********
 
 
 # ======================================================
@@ -55,7 +24,7 @@ RUN find /extract -name '*.log' -delete && \
 # ======================================================
 
 
-# ***************************************************************** START OF STAGE 2 *********************************************************************
+# ************ START OF STAGE 2 ******************
 
 
 
@@ -66,48 +35,29 @@ FROM public.ecr.aws/lambda/nodejs:22 AS lambda
 ENV NODE_CONFIG_DIR=/var/task/config
 
 # copying all extracted components from stage 1
-COPY --from=extractor /extract/bin ${LAMBDA_RUNTIME_DIR}/bin
-COPY --from=extractor /extract/lib ${LAMBDA_RUNTIME_DIR}/lib
-COPY --from=extractor /extract/fonts ${LAMBDA_RUNTIME_DIR}/fonts
-COPY --from=extractor /extract/core-fonts ${LAMBDA_RUNTIME_DIR}/core-fonts
-COPY --from=extractor /extract/config ${LAMBDA_RUNTIME_DIR}/config
+COPY --from=extractor /var/www/onlyoffice/documentserver/server/FileConverter/bin ${LAMBDA_RUNTIME_DIR}/documentserver/server/FileConverter/bin
+COPY --from=extractor /var/www/onlyoffice/documentserver/core-fonts ${LAMBDA_RUNTIME_DIR}/documentserver/core-fonts
+COPY --from=extractor /var/www/onlyoffice/documentserver/sdkjs ${LAMBDA_RUNTIME_DIR}/documentserver/sdkjs
 
-# Copying package.json files
-COPY resources/Common/package.json ${LAMBDA_RUNTIME_DIR}/server/Common/package.json
-COPY resources/DocService/package.json ${LAMBDA_RUNTIME_DIR}/server/DocService/package.json
+# COPY --from=extractor /var/www/onlyoffice/documentserver/ ${LAMBDA_RUNTIME_DIR}/documentserver/
+COPY --from=extractor /usr/share/fonts/ /usr/share/fonts/
+
+
 COPY package.json ${LAMBDA_TASK_ROOT}/package.json
 
-
-
-# installing dependencies of common + docService + lambda only if package.json exists 
-WORKDIR ${LAMBDA_RUNTIME_DIR}/server/Common
-RUN if [ -f package.json ]; then npm install --omit=dev; else echo "No package.json in Common, skipping npm install"; fi
-
-WORKDIR ${LAMBDA_RUNTIME_DIR}/server/DocService
-RUN if [ -f package.json ]; then npm install --omit=dev; else echo "No package.json in DocService, skipping npm install"; fi
 
 
 # copying package.json for lambda function
 WORKDIR ${LAMBDA_TASK_ROOT}
 RUN if [ -f package.json ]; then npm install --omit=dev; else echo "No package.json in task root, skipping npm install"; fi
 
-# Copying local resources --> need to revamp this folder for specific imports
-COPY resources/ ${LAMBDA_RUNTIME_DIR}/server/
 
 # copying the lambda handlers and modules
 COPY modules/ ${LAMBDA_TASK_ROOT}/modules
+COPY resources/ ${LAMBDA_TASK_ROOT}/resources/
 COPY index.js ${LAMBDA_TASK_ROOT}/index.js
-COPY samples/ ${LAMBDA_TASK_ROOT}/samples
 
-# copying the config --> default.json [Assuming it will be same throughout the environments]
 COPY config/default.json ${LAMBDA_TASK_ROOT}/config/default.json
-
-# setting up library paths for lambda
-# searches left --> right, first lib then bin  
-ENV LD_LIBRARY_PATH=${LAMBDA_RUNTIME_DIR}/lib:${LAMBDA_RUNTIME_DIR}/bin:$LD_LIBRARY_PATH
-
-# adding executables to files forcefully
-RUN chmod +x ${LAMBDA_RUNTIME_DIR}/bin/*
 
 # setting the lambda handler
 CMD ["index.handler"]

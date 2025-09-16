@@ -31,61 +31,16 @@
  */
 
 "use strict";
+const locale = require("windows-locale");
 
-const exifParser = require("exif-parser");
 //set global window to fix issue https://github.com/photopea/UTIF.js/issues/130
 if (!global.window) {
   global.window = global;
 }
-const Jimp = require("jimp");
-const locale = require("windows-locale");
 
-async function fixImageExifRotation(ctx, buffer) {
-  if (!buffer) {
-    return buffer;
-  }
-  //todo move to DocService dir common
-  try {
-    let parser = exifParser.create(buffer);
-    let exif = parser.parse();
-    if (exif.tags?.Orientation > 1) {
-      ctx.logger.debug("fixImageExifRotation remove exif and rotate:%j", exif);
-      buffer = convertImageTo(ctx, buffer, Jimp.AUTO);
-    }
-  } catch (e) {
-    ctx.logger.debug("fixImageExifRotation error:%s", e.stack);
-  }
-  return buffer;
-}
-async function convertImageToPng(ctx, buffer) {
-  return await convertImageTo(ctx, buffer, Jimp.MIME_PNG);
-}
-async function convertImageTo(ctx, buffer, mime) {
-  try {
-    ctx.logger.debug("convertImageTo %s", mime);
-    let image = await Jimp.read(buffer);
-    //remove exif
-    image.bitmap.exifBuffer = undefined;
-    //set jpeg and png quality
-    //https://www.imagemagick.org/script/command-line-options.php#quality
-    image.quality(90);
-    image.deflateLevel(7);
-    buffer = await image.getBufferAsync(mime);
-  } catch (e) {
-    ctx.logger.debug("convertImageTo error:%s", e.stack);
-  }
-  return buffer;
-}
-/**
- *
- * @param {string} lang
- * @returns {number | undefined}
- */
 function localeToLCID(lang) {
   let elem = locale[lang && lang.toLowerCase()];
   return elem && elem.id;
 }
 
-module.exports.fixImageExifRotation = fixImageExifRotation;
-module.exports.convertImageToPng = convertImageToPng;
 module.exports.localeToLCID = localeToLCID;
