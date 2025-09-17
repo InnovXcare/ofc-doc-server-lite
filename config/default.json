@@ -136,7 +136,7 @@
       "downloadAttemptDelay": 1000,
       "maxprocesscount": 1,
       "fontDir": "/var/runtime/documentserver/core-fonts",
-      "presentationThemesDir": "/var/runtime/documentserver/core-fonts",
+      "presentationThemesDir": "/var/runtime/documentserver/sdkjs/slide/themes",
       "x2tPath": "/var/runtime/documentserver/server/FileConverter/bin/x2t",
       "docbuilderPath": "/var/runtime/documentserver/server/FileConverter/bin/docbuilder",
       "args": "",
