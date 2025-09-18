@@ -2,6 +2,7 @@ const path = require("path");
 const fs = require("fs");
 const spawnAsync = require("@expo/spawn-async");
 const config = require("config");
+const { getStringFromFormat } = require("../resources/utils");
 
 class DocBuilderConverter {
   constructor() {
@@ -84,7 +85,7 @@ class DocBuilderConverter {
   }
 
   generateDocBuilderScript(inputFile, outputFile, outputFormat) {
-    const formatString = this.getDocBuilderFormatString(outputFormat);
+    const formatString = getStringFromFormat(outputFormat);
     const inputFileName = path.basename(inputFile);
     const outputFileName = path.basename(outputFile);
 
@@ -159,19 +160,6 @@ class DocBuilderConverter {
 `;
 
     return script;
-  }
-  getDocBuilderFormatString(outputFormat) {
-    const formatMap = {
-      65: "docx", // Change from AVS_OFFICESTUDIO_FILE_DOCUMENT_DOCX to "docx"
-      66: "doc", // Change from AVS_OFFICESTUDIO_FILE_DOCUMENT_DOC to "doc"
-      67: "odt", // Change from AVS_OFFICESTUDIO_FILE_DOCUMENT_ODT to "odt"
-      69: "rtf", // Change from AVS_OFFICESTUDIO_FILE_DOCUMENT_RTF to "rtf"
-      70: "txt", // Change from AVS_OFFICESTUDIO_FILE_DOCUMENT_TXT to "txt"
-      71: "html", // Change from AVS_OFFICESTUDIO_FILE_DOCUMENT_HTML to "html"
-      513: "pdf", // Change from AVS_OFFICESTUDIO_FILE_CROSSPLATFORM_PDF to "pdf"
-    };
-
-    return formatMap[outputFormat] || "pdf";
   }
 }
 module.exports = DocBuilderConverter;
