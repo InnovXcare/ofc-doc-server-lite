@@ -34,15 +34,15 @@ FROM public.ecr.aws/lambda/nodejs:22 AS lambda
 # We can set any lambda specific envs here if required
 ENV NODE_CONFIG_DIR=/var/task/config
 
-# copying all extracted components from stage 1
+# copying all extracted components from stage 1 [fileConverters, fonts, sdkjs]
 COPY --from=extractor /var/www/onlyoffice/documentserver/server/FileConverter/bin ${LAMBDA_RUNTIME_DIR}/documentserver/server/FileConverter/bin
 COPY --from=extractor /var/www/onlyoffice/documentserver/core-fonts ${LAMBDA_RUNTIME_DIR}/documentserver/core-fonts
 COPY --from=extractor /var/www/onlyoffice/documentserver/sdkjs ${LAMBDA_RUNTIME_DIR}/documentserver/sdkjs
 
-# COPY --from=extractor /var/www/onlyoffice/documentserver/ ${LAMBDA_RUNTIME_DIR}/documentserver/
 COPY --from=extractor /usr/share/fonts/ /usr/share/fonts/
 
 
+#copying packageJson file
 COPY package.json ${LAMBDA_TASK_ROOT}/package.json
 
 
