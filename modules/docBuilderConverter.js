@@ -74,6 +74,7 @@ class DocBuilderConverter {
     }
 
     console.log("DocBuilder conversion completed successfully");
+
     return {
       success: true,
       converterType: "docbuilder",
@@ -84,42 +85,81 @@ class DocBuilderConverter {
 
   generateDocBuilderScript(inputFile, outputFile, outputFormat) {
     const formatString = this.getDocBuilderFormatString(outputFormat);
+    const inputFileName = path.basename(inputFile);
     const outputFileName = path.basename(outputFile);
 
-    // we can change this script to do additional things on top of it like removing highlights and other things
+    // IMPORTANT NOTE :::
+    // please dont use try catch as docBuilder use old javascript parser and it fails
     const script = `
-    // Auto-generated DocBuilder script for file conversion
-    console.log("Starting DocBuilder conversion process...");
-
-try {
-    // Open the input DOCX file
-    console.log("Opening input file:", ${JSON.stringify(inputFile)});
-    builder.OpenFile(${JSON.stringify(inputFile)});
     
-    // Get document reference
-    const oDocument = Api.GetDocument();
+    console.log("Starting script execution.");
+
+    console.log("Opening input file: source/${inputFileName}");
+    builder.OpenFile("source/${inputFileName}");
+    
     console.log("Document loaded successfully");
+    const oDocument = Api.GetDocument();
 
-
-    // Save the document in the desired format
-    builder.SaveFile(${JSON.stringify(formatString)}, ${JSON.stringify(
-      outputFileName
-    )});
+    //Functions to remove backgroundColor and Text Color to black
+    function rgbToHex(_rgbaColor) {
+        const rgbColor = _rgbaColor?.Unicolor?.color?.RGBA;
+        if (!rgbColor || rgbColor.R === undefined) {
+            return null;
+        }
+         const toHex = (c) => ('0' + c.toString(16)).slice(-2);
+        return "#" + toHex(rgbColor.R) + toHex(rgbColor.G) + toHex(rgbColor.B);
+    }   
+ 
+ 
+    function processElement(oElement) {
+        const numElements = oElement?.GetElementsCount?.() || 0;
+        for (let i = 0; i < numElements; i++) {
+            const oNestedElement = oElement.GetElement(i);
+            const classType = oNestedElement.GetClassType();
+            console.log("ClassType ::",classType);
+            if (classType === "run") {
+                const oTextPr = oNestedElement.GetTextPr();
+                const rgbColor = oTextPr.GetColor();
+                const newTextPr = Api.CreateTextPr();
+ 
+                // Check if the color matches and change it to black
+                if (['#ed7d31', '#0070c0'].includes(rgbToHex(rgbColor))) {
+                    console.log("Setting color of ::", oNestedElement.GetText());
+                    // Set the color on the text properties object
+                    // oTextPr.SetColor(0, 0, 0);
+                    newTextPr.SetColor(0, 0, 0);
+                }
+                if (oTextPr.GetHighlight() && oTextPr.GetHighlight() == "yellow") {
+                    console.log("Setting highlight of"+ oTextPr + " - "+ oTextPr.GetHighlight() + " to none");
+                    newTextPr.SetHighlight("none");
+                }
+                // Apply the new text properties object to the run
+                oNestedElement.SetTextPr(newTextPr);
+            } else if (
+            classType === "paragraph" ||
+            classType === "table" ||
+            classType === "hyperlink" ||
+            classType === "inlineLvlSdt" ||
+            classType === "blockLvlSdt"
+            ) {
+                // Recursively process nested elements within these container types
+                processElement(oNestedElement?.GetContent?.() || oNestedElement);
+            }
+        }
+    }
     
-    // Close the document
+    console.log("Saving file as: ${formatString} to result/${outputFileName}");
+    builder.SaveFile("${formatString}", "result/${outputFileName}");
+    
     console.log("Closing document...");
     builder.CloseFile();
     
-    console.log("DocBuilder conversion completed successfully");
+    console.log("Script execution completed successfully.");
     
-} catch (error) {
-    console.error("DocBuilder conversion error:", error.toString());
-    builder.CloseFile(); // Ensure cleanup
-    throw error;
-    }`;
+`;
+
     return script;
   }
-
   getDocBuilderFormatString(outputFormat) {
     const formatMap = {
       65: "docx", // Change from AVS_OFFICESTUDIO_FILE_DOCUMENT_DOCX to "docx"
