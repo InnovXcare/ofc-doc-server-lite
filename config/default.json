@@ -1,0 +1,212 @@
+{
+  "log": {
+    "filePath": "/var/task/index.js",
+    "options": {
+      "replaceConsole": true
+    }
+  },
+
+  "storage": {
+    "name": "storage-fs",
+    "fs": {
+      "folderPath": "/tmp/onlyoffice-converter",
+      "urlExpires": 900,
+      "secretString": "OUR_SECRET_LATER_TO_BE_ADDED_MAYBE"
+    },
+    "externalHost": ""
+  },
+  "aesEncrypt": {
+    "config": {
+      "keyByteLength": 32,
+      "saltByteLength": 64,
+      "initializationVectorByteLength": 16,
+      "iterationsByteLength": 5
+    },
+    "secret": "verysecretstring"
+  },
+  "services": {
+    "CoAuthoring": {
+      "request-filtering-agent": {
+        "allowPrivateIPAddress": false,
+        "allowMetaIPAddress": false
+      },
+      "ipfilter": {
+        "rules": [{ "address": "*", "allowed": true }],
+        "useforrequest": false,
+        "errorcode": 403
+      },
+
+      "expire": {
+        "saveLock": 60,
+        "presence": 300,
+        "locks": 604800,
+        "changeindex": 86400,
+        "lockDoc": 30,
+        "message": 86400,
+        "lastsave": 604800,
+        "forcesave": 604800,
+        "forcesaveLock": 5000,
+        "saved": 3600,
+        "documentsCron": "0 */2 * * * *",
+        "files": 86400,
+        "filesCron": "00 00 */1 * * *",
+        "filesremovedatonce": 100,
+        "sessionidle": "1h",
+        "sessionabsolute": "30d",
+        "sessionclosecommand": "2m",
+        "pemStdTTL": "1h",
+        "pemCheckPeriod": "10m",
+        "updateVersionStatus": "5m",
+        "monthUniqueUsers": "1y"
+      },
+      "server": {
+        "port": 8000,
+        "mode": "development",
+        "limits_tempfile_upload": 52428800,
+        "limits_image_size": 26214400,
+        "savetimeoutdelay": 5000,
+        "maxRequestChanges": 20000,
+        "openProtectedFile": true,
+        "assemblyFormatAsOrigin": true,
+        "tokenRequiredParams": false
+      },
+      "requestDefaults": {
+        "headers": {
+          "User-Agent": "only-office-doc-server-lite",
+          "Connection": "Keep-Alive"
+        },
+        "rejectUnauthorized": false
+      },
+      "utils": {
+        "utils_common_fontdir": "/var/runtime/documentserver/core-fonts",
+        "utils_fonts_search_patterns": "*.ttf;*.ttc;*.otf"
+      },
+      "secret": {
+        "inbox": { "string": "secret" },
+        "outbox": { "string": "secret" },
+        "session": { "string": "secret" }
+      },
+      "token": {
+        "enable": {
+          "browser": false,
+          "request": {
+            "inbox": false,
+            "outbox": false
+          }
+        },
+        "browser": {
+          "secretFromInbox": true
+        },
+        "inbox": {
+          "header": "Authorization",
+          "prefix": "Bearer ",
+          "inBody": false
+        },
+        "outbox": {
+          "header": "Authorization",
+          "prefix": "Bearer ",
+          "algorithm": "HS256",
+          "expires": "5m",
+          "inBody": false,
+          "urlExclusionRegex": ""
+        },
+        "session": {
+          "algorithm": "HS256",
+          "expires": "30d"
+        },
+        "verifyOptions": {
+          "clockTolerance": 60
+        }
+      }
+    }
+  },
+  "queue": {
+    "type": "rabbitmq",
+    "visibilityTimeout": 300,
+    "retentionPeriod": 900
+  },
+  "FileConverter": {
+    "converter": {
+      "maxDownloadBytes": 52428800,
+      "downloadTimeout": {
+        "connectionAndInactivity": "30s",
+        "wholeCycle": "60s"
+      },
+      "downloadAttemptMaxCount": 2,
+      "downloadAttemptDelay": 1000,
+      "maxprocesscount": 1,
+      "fontDir": "/var/runtime/documentserver/core-fonts",
+      "presentationThemesDir": "/var/runtime/documentserver/sdkjs/slide/themes",
+      "x2tPath": "/var/runtime/documentserver/server/FileConverter/bin/x2t",
+      "docbuilderPath": "/var/runtime/documentserver/server/FileConverter/bin/docbuilder",
+      "args": "",
+      "spawnOptions": {
+        "timeout": 120000
+      },
+      "errorfiles": "/tmp/onlyoffice-converter/error",
+      "streamWriterBufferSize": 4194304,
+      "inputLimits": [
+        {
+          "type": "docx;dotx;docm;dotm",
+          "zip": {
+            "uncompressed": "25MB",
+            "template": "*.xml"
+          }
+        },
+        {
+          "type": "xlsx;xltx;xlsm;xltm",
+          "zip": {
+            "uncompressed": "50MB",
+            "template": "*.xml"
+          }
+        },
+        {
+          "type": "pptx;ppsx;potx;pptm;ppsm;potm",
+          "zip": {
+            "uncompressed": "25MB",
+            "template": "*.xml"
+          }
+        }
+      ]
+    }
+  },
+  "dnscache": {
+    "enable": true,
+    "ttl": 300,
+    "cachesize": 1000
+  },
+  "runtimeConfig": {
+    "filePath": "",
+    "cache": {
+      "stdTTL": 300,
+      "checkperiod": 60,
+      "useClones": false
+    }
+  },
+  "tenants": {
+    "baseDir": "",
+    "baseDomain": "",
+    "defaultTenant": "localhost",
+    "filenameSecret": "secret.key",
+    "filenameLicense": "license.lic",
+    "filenameConfig": "config.json",
+    "cache": {
+      "stdTTL": 300,
+      "checkperiod": 60,
+      "useClones": false
+    }
+  },
+  "win-ca": {
+    "inject": "+"
+  },
+  "externalRequest": {
+    "action": {
+      "allow": true,
+      "blockPrivateIP": false
+    },
+    "directIfIn": {
+      "allowList": [],
+      "jwtToken": true
+    }
+  }
+}
