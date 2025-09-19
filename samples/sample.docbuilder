@@ -1,0 +1,29 @@
+// sales_report.docbuilder
+console.log("Starting script execution.");
+
+  // 1. Create a new document in the DOCX format
+builder.CreateFile("docx");
+
+// 2. Get a reference to the document's content
+const oDocument = Api.GetDocument();
+
+// 3. Create a new paragraph
+const oParagraph = Api.CreateParagraph();
+
+// 4. Set the paragraph's alignment to center
+oParagraph.SetJc("center");
+
+// 5. Add text to the paragraph
+oParagraph.AddText("This is an example document created with ONLYOFFICE Document Builder. something something");
+
+// 6. Push the paragraph to the document
+oDocument.Push(oParagraph);
+
+// 7. Save the document to a file named "example.docx"
+builder.SaveFile("rtf", "example.rtf");
+builder.SaveFile("html", "example.html");
+builder.SaveFile("docx", "example.docx");
+builder.SaveFile("pdf", "example.pdf");
+
+// 8. Close the document builder
+builder.CloseFile();
