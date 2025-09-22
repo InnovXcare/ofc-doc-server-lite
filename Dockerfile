@@ -42,11 +42,11 @@ COPY --from=extractor /var/www/onlyoffice/documentserver/sdkjs ${LAMBDA_RUNTIME_
 COPY --from=extractor /usr/share/fonts/ /usr/share/fonts/
 
 # copying all externalFonts
-COPY data/externalFonts /usr/share/fonts/truetype
+COPY data/external-fonts /usr/share/fonts/truetype
 
 
 #copying packageJson file
-COPY package.json ${LAMBDA_TASK_ROOT}/package.json
+COPY server/package.json ${LAMBDA_TASK_ROOT}/package.json
 
 
 
@@ -56,11 +56,12 @@ RUN if [ -f package.json ]; then npm install --omit=dev; else echo "No package.j
 
 
 # copying the lambda handlers and modules
-COPY modules/ ${LAMBDA_TASK_ROOT}/modules
-COPY resources/ ${LAMBDA_TASK_ROOT}/resources/
-COPY index.js ${LAMBDA_TASK_ROOT}/index.js
+COPY server ${LAMBDA_TASK_ROOT}/server
+COPY index.js ${LAMBDA_TASK_ROOT}
 
-COPY config/default.json ${LAMBDA_TASK_ROOT}/config/default.json
+# copying CONFIG file
+COPY server/config/default.json ${LAMBDA_TASK_ROOT}/config/default.json
+
 
 CMD ["index.handler"]
 # ***************************************************************** END OF STAGE 2 *********************************************************************

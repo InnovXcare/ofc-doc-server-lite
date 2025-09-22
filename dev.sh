@@ -43,9 +43,8 @@ run_container() {
     
     # Run container with volume mounts for development
     docker run --name $CONTAINER_NAME -d -p $PORT \
+               -v "$(pwd)/server":/var/task/server \
                -v "$(pwd)/samples":/var/task/samples \
-               -v "$(pwd)/controller":/var/task/controller \
-               -v "$(pwd)/data":/var/task/data \
                $IMAGE_NAME
     
     if [ $? -eq 0 ]; then
@@ -72,6 +71,10 @@ build_and_run() {
     if build_image; then
         run_container
     fi
+}
+
+docker_restart(){
+    docker restart $CONTAINER_NAME
 }
 
 # Function to show container logs
@@ -131,18 +134,8 @@ case "${1:-}" in
         # Watch for changes
         print_message $YELLOW "Watching for file changes... (Press Ctrl+C to stop)"
         fswatch -o \
-            --exclude='\.git' \
-            --exclude='node_modules' \
-            --exclude='\.DS_Store' \
-            --exclude='\.dockerignore' \
-            --exclude='README\.md' \
-            --exclude='dev\.sh' \
-            --exclude='run\.sh' \
-            --exclude='watch-and-build\.sh' \
-            --exclude='samples/' \
-            --exclude='data/' \
-            . | while read f; do
-            build_and_run true
+            server | while read f; do
+            docker_restart
         done
         ;;
     "help"|"-h"|"--help")
