@@ -36,10 +36,13 @@ ENV NODE_CONFIG_DIR=/var/task/config
 
 # copying all extracted components from stage 1 [fileConverters, fonts, sdkjs]
 COPY --from=extractor /var/www/onlyoffice/documentserver/server/FileConverter/bin ${LAMBDA_RUNTIME_DIR}/documentserver/server/FileConverter/bin
-COPY --from=extractor /var/www/onlyoffice/documentserver/core-fonts ${LAMBDA_RUNTIME_DIR}/documentserver/core-fonts
+COPY --from=extractor /var/www/onlyoffice/documentserver/core-fonts /usr/share/fonts/truetype
 COPY --from=extractor /var/www/onlyoffice/documentserver/sdkjs ${LAMBDA_RUNTIME_DIR}/documentserver/sdkjs
 
 COPY --from=extractor /usr/share/fonts/ /usr/share/fonts/
+
+# copying all externalFonts
+COPY data/externalFonts /usr/share/fonts/truetype
 
 
 #copying packageJson file
@@ -59,7 +62,5 @@ COPY index.js ${LAMBDA_TASK_ROOT}/index.js
 
 COPY config/default.json ${LAMBDA_TASK_ROOT}/config/default.json
 
-# setting the lambda handler
 CMD ["index.handler"]
-
 # ***************************************************************** END OF STAGE 2 *********************************************************************

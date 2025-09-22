@@ -80,9 +80,6 @@ class X2TConverter {
     const spawnOptions = Object.assign({}, this.spawnOptions);
     spawnOptions.env = Object.assign({}, process.env, spawnOptions.env, {
       LD_LIBRARY_PATH: "/var/runtime/lib:/var/runtime/lib64",
-      FONTCONFIG_PATH: "/var/runtime/core-fonts",
-      HOME: "/tmp",
-      TMPDIR: "/tmp",
       PATH:
         process.env.PATH +
         ":/var/runtime/documentserver/server/FileConverter/bin",
