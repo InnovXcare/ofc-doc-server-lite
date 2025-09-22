@@ -43,44 +43,5 @@
         }
       ]
     }
-  },
-  "dnscache": {
-    "enable": true,
-    "ttl": 300,
-    "cachesize": 1000
-  },
-  "runtimeConfig": {
-    "filePath": "",
-    "cache": {
-      "stdTTL": 300,
-      "checkperiod": 60,
-      "useClones": false
-    }
-  },
-  "tenants": {
-    "baseDir": "",
-    "baseDomain": "",
-    "defaultTenant": "localhost",
-    "filenameSecret": "secret.key",
-    "filenameLicense": "license.lic",
-    "filenameConfig": "config.json",
-    "cache": {
-      "stdTTL": 300,
-      "checkperiod": 60,
-      "useClones": false
-    }
-  },
-  "win-ca": {
-    "inject": "+"
-  },
-  "externalRequest": {
-    "action": {
-      "allow": true,
-      "blockPrivateIP": false
-    },
-    "directIfIn": {
-      "allowList": [],
-      "jwtToken": true
-    }
   }
 }
