@@ -1,5 +1,7 @@
 const path = require("path");
 const fs = require("fs");
+const axios = require("axios");
+const pdflib = require("pdf-lib");
 const X2TConverter = require("./x2tConverter");
 const DocBuilderConverter = require("./docBuilderConverter");
 const {
@@ -33,6 +35,7 @@ class ConversionService {
       fromChanges = false,
       includeBase64 = false,
       converter = "x2t", // assuming default converter  x2t
+      backgroundImageUrl = "",
     } = params;
 
     // Validating input
@@ -100,10 +103,14 @@ class ConversionService {
 
       // Optionally base64 encoding
       let base64Content = null;
+      let fileBuffer = null;
       if (includeBase64) {
-        const fileBuffer = fs.readFileSync(finalOutputPath);
+        fileBuffer = fs.readFileSync(finalOutputPath);
         base64Content = fileBuffer.toString("base64");
       }
+
+      if (backgroundImageUrl)
+        await this.embedBackgroundImage(letterHeadImageUrl, finalOutputPath);
 
       return {
         success: true,
@@ -122,6 +129,45 @@ class ConversionService {
         fs.rmSync(tempDirs.temp, { recursive: true, force: true });
         console.log("Cleaned up temp directory");
       }
+    }
+  }
+  async embedBackgroundImage(backgroundImageUrl, finalOutputPath) {
+    if (!backgroundImageUrl) return;
+    try {
+      const bgResp = await axios.get(backgroundImageUrl, {
+        responseType: "arraybuffer",
+      });
+      const { PDFDocument, BlendMode } = pdflib;
+      const pdfDoc = await PDFDocument.load(fileBuffer);
+
+      const bgBytes = Buffer.from(bgResp.data);
+      const bgImage = null;
+
+      const uint8Array = new Uint8Array(bgBytes.slice(0, 4));
+      const isPNG =
+        uint8Array[0] === 0x89 &&
+        uint8Array[1] === 0x50 &&
+        uint8Array[2] === 0x4e &&
+        uint8Array[3] === 0x47;
+      bgImage = isPNG
+        ? await baseDoc.embedPng(bgBytes)
+        : await baseDoc.embedJpg(bgBytes);
+
+      const pdfPages = pdfDoc.getPages();
+      for (let i = 0; i < pdfPages.length; i++) {
+        const pageSize = pdfPages[i].getSize();
+        pdfPages[i].drawImage(bgImage, {
+          ...pageSize,
+          x: 0,
+          y: 0,
+          blendMode: BlendMode.Multiply,
+          interpolation: "cubic",
+        });
+      }
+      const outBytes = await pdfDoc.save();
+      fs.writeFileSync(finalOutputPath, outBytes);
+    } catch (error) {
+      console.log("SOME ERROR IN EMBEDDING IMAGE");
     }
   }
 
