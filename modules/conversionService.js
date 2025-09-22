@@ -167,7 +167,7 @@ class ConversionService {
       const outBytes = await pdfDoc.save();
       fs.writeFileSync(finalOutputPath, outBytes);
     } catch (error) {
-      console.log("SOME ERROR IN EMBEDDING IMAGE");
+      console.log("SOME ERROR IN EMBEDDING IMAGE", error);
     }
   }
 
