@@ -1,5 +1,5 @@
 {
-  "name": "only-office-doc-server-lite",
+  "name": "ofc-doc-server-lite",
   "version": "1.0.0",
   "description": "ONLYOFFICE Document Converter for AWS Lambda",
   "main": "index.js",
