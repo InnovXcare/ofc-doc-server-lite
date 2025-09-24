@@ -42,9 +42,6 @@ class DocBuilderConverter {
         ":/var/runtime/documentserver/server/FileConverter/bin",
     });
 
-    // Setting working directory to temp directory so relative paths work
-    spawnOptions.cwd = tempDir;
-
     // Executing DocBuilder with the generated script
     const result = await spawnAsync(
       this.docbuilderPath,
@@ -83,8 +80,6 @@ class DocBuilderConverter {
 
   generateDocBuilderScript(inputFile, outputFile, outputFormat) {
     const formatString = getStringFromFormat(outputFormat);
-    const inputFileName = path.basename(inputFile);
-    const outputFileName = path.basename(outputFile);
 
     // IMPORTANT NOTE :::
     // please dont use try catch as docBuilder use old javascript parser and it fails
@@ -92,8 +87,8 @@ class DocBuilderConverter {
     
     console.log("Starting script execution.");
 
-    console.log("Opening input file: source/${inputFileName}");
-    builder.OpenFile("source/${inputFileName}");
+    console.log("Opening input file: ${inputFile}");
+    builder.OpenFile("${inputFile}");
     
     console.log("Document loaded successfully");
     const oDocument = Api.GetDocument();
@@ -145,9 +140,12 @@ class DocBuilderConverter {
             }
         }
     }
-    
-    console.log("Saving file as: ${formatString} to result/${outputFileName}");
-    builder.SaveFile("${formatString}", "result/${outputFileName}");
+
+    console.log("Processing document to remove formatting...");
+    processElement(oDocument);
+
+    console.log("Saving file as: ${formatString} to ${outputFile}");
+    builder.SaveFile("${formatString}", "${outputFile}");
     
     console.log("Closing document...");
     builder.CloseFile();
