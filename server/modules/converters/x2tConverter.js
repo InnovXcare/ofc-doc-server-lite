@@ -3,7 +3,7 @@ const fs = require("fs");
 const spawnAsync = require("@expo/spawn-async");
 const config = require("config");
 const bytes = require("bytes");
-const { encodeXml } = require("../resources/utils");
+const { encodeXml } = require("../../resources/utils");
 
 class X2TConverter {
   constructor() {
