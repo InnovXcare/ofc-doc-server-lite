@@ -2,7 +2,7 @@ const path = require("path");
 const fs = require("fs");
 const spawnAsync = require("@expo/spawn-async");
 const config = require("config");
-const { getStringFromFormat } = require("../resources/utils");
+const { getStringFromFormat } = require("../../resources/utils");
 
 class DocBuilderConverter {
   constructor() {
