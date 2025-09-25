@@ -51,7 +51,7 @@ class FileProcessor {
       await s3Service.uploadFile(fileObj, outputFile.location, tags);
       console.log(`Uploaded to S3: ${outputFile.location}${fileName}`);
 
-      return `${outputFile.location}${fileName}`;
+      return `${outputFile.location}/${fileName}`;
     } catch (error) {
       console.error("S3 upload error:", error);
       throw error;

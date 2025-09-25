@@ -68,7 +68,7 @@ class BinFileProcessor {
         console.log(`binFile With Changes uploaded to: ${uploadResult}`);
       }
     }
-    const [conversionResults] = await Promise.all(
+    const conversionResults = await Promise.all(
       convertedFiles.map(async (convertedFile, index) => {
         const finalOutputPath = path.join(
           "/tmp",
