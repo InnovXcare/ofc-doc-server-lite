@@ -32,12 +32,12 @@ const inputFileSchema = Joi.object({
 
 // S3 tag schema
 const s3TagSchema = Joi.object({
-  Key: Joi.string().min(1).max(128).required().messages({
+  key: Joi.string().min(1).max(128).required().messages({
     "string.max": "Tag key cannot exceed 128 characters",
     "any.required": "Tag key is required",
   }),
 
-  Value: Joi.string().min(1).max(256).required().messages({
+  value: Joi.string().min(1).max(256).required().messages({
     "string.max": "Tag value cannot exceed 256 characters",
     "any.required": "Tag value is required",
   }),
