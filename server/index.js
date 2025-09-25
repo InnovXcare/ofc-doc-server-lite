@@ -27,7 +27,7 @@ exports.lambdaHandler = async (event, context) => {
   //     },
   //     "outputFiles": [
   //       {
-  //         "":""
+  //         "key":"outputFileName"
   //         "type": "pdf",
   //         "location": "ofc/output",
   //         "backgroundImageUrl": "ofc/letterhead.jpg",
