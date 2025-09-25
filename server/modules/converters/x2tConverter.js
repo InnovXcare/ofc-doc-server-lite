@@ -77,12 +77,15 @@ class X2TConverter {
     childArgs.push(paramsFile);
 
     // preparing spawn options
+    const BIN = "/var/runtime/documentserver/server/FileConverter/bin";
     const spawnOptions = Object.assign({}, this.spawnOptions);
     spawnOptions.env = Object.assign({}, process.env, spawnOptions.env, {
       LD_LIBRARY_PATH: "/var/runtime/lib:/var/runtime/lib64",
       PATH:
         process.env.PATH +
         ":/var/runtime/documentserver/server/FileConverter/bin",
+      NODE_ICU_DATA: BIN,
+      XDG_CACHE_HOME: "/tmp/.cache",
     });
     const result = await spawnAsync(this.x2tPath, childArgs, spawnOptions);
 
