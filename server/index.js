@@ -46,56 +46,29 @@ exports.lambdaHandler = async (event, context) => {
     // 5. if backgroundImage is present in outputFiles and  type is pdf, embed background image to it
     // 5. upload all output files where location is present to their location
 
-    // console.log("Validated params:", validatedParams);
-    // return { message: "VALIDATION WORKS!!" };
-
-    // Set conversion parameters
+    // SAMPLE PARAMS
 
     //   {
     //     "inputFile": {
     //       "type": "docx",
-    //       "location": "https://example.com/input.docx"
+    //       "location": "ofc/input.docx"
     //     },
     //     "outputFiles": [
     //       {
+    //         "":""
     //         "type": "pdf",
-    //         "location": "https://example.com/output/",
-    //         "backgroundImageUrl": "https://example.com/letterhead.jpg",
+    //         "location": "ofc/output",
+    //         "backgroundImageUrl": "ofc/letterhead.jpg",
     //         "tags": [
-    //           {"Key": "Department", "Value": "Marketing"}
+    //           {"Key": "reportId", "Value": "SomeId"}
     //         ]
     //       }
     //     ],
     //     "region": "us-east-1"
     //   }
+
     const s3Service = new S3Service(params.bucket, params.region);
     const conversionParams = { ...params, s3Service };
-
-    if (params.inputFile.type === AVS_OFFICESTUDIO_FILE_CANVAS_WORD) {
-      if (params.changesFileLocation) {
-        // TODO::
-        //1. Download the changes file and rename it to changes0.json
-        //2. Save changes0.json to same directory as input File
-        //2. Use x2t converter and set fromChanges flag to be true
-      }
-      //TODO::
-      //1. convert to docx using x2t with Formatting[BG COLOR + others] --> bin --> upload to s3
-      //2. convert to docx using docBuilder without Formatting
-      //3. convert these without Formatting docx file to output types and upload to s3
-    } else {
-      //TODO::
-      //1. convert this input type using x2t to output types and upload to s3
-    }
-    // conversionParams = {
-    //   filetype: params.filetype || "docx",
-    //   outputType: params.outputType || "pdf",
-    //   inputSource: params.url || "/var/task/samples/sampleDoc.docx",
-    //   key: params.key || `lambda_${Date.now()}`,
-    //   region: params.region,
-    //   fromChanges: params.fromChanges || false,
-    //   includeBase64: params.includeBase64 === true,
-    //   converter: params.converter || "x2t", // Allow choosing converter
-    // };
 
     // Perform conversion
     const startTime = Date.now();
