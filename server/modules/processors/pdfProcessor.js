@@ -1,4 +1,4 @@
-const fs = require("fs");
+const { promises: fs } = require("fs");
 const pdflib = require("pdf-lib");
 
 class PdfProcessor {
@@ -13,8 +13,8 @@ class PdfProcessor {
       // Downloading background image
       const tempBgFile = `/tmp/bg_${Date.now()}.jpg`;
       await s3Service.downloadS3File(backgroundImageUrl, tempBgFile);
-      const bgBytes = fs.readFileSync(tempBgFile);
-      fs.unlinkSync(tempBgFile); // Clean up immediately
+      const bgBytes = await fs.readFile(tempBgFile);
+      await fs.unlink(tempBgFile); // Clean up immediately
 
       // Embed into PDF
       await this.embedBackgroundImage(bgBytes, pdfPath);
@@ -30,7 +30,7 @@ class PdfProcessor {
     if (!backgroundImageBytes) return;
 
     try {
-      const fileBuffer = fs.readFileSync(pdfPath);
+      const fileBuffer = await fs.readFile(pdfPath);
       const { PDFDocument, BlendMode } = pdflib;
       const pdfDoc = await PDFDocument.load(fileBuffer);
 
@@ -55,7 +55,7 @@ class PdfProcessor {
       });
 
       const pdfBytes = await pdfDoc.save();
-      fs.writeFileSync(pdfPath, pdfBytes);
+      await fs.writeFile(pdfPath, pdfBytes);
       console.log("Background image embedded successfully");
     } catch (error) {
       console.error("Error embedding background image:", error);

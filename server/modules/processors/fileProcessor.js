@@ -1,5 +1,5 @@
 const path = require("path");
-const fs = require("fs");
+const { promises: fs } = require("fs");
 const { createTempDir } = require("../../resources/helpers");
 
 class FileProcessor {
@@ -43,7 +43,7 @@ class FileProcessor {
   async uploadToS3(filePath, outputFile, s3Service) {
     try {
       const fileName = path.basename(filePath);
-      const fileBuffer = fs.readFileSync(filePath);
+      const fileBuffer = await fs.readFile(filePath);
 
       const fileObj = { name: fileName, data: fileBuffer };
       const tags = this.extractTags(outputFile.tags);
@@ -60,26 +60,30 @@ class FileProcessor {
 
   // Validating if file exists and is not empty
 
-  validateFile(filePath) {
-    if (!fs.existsSync(filePath)) {
-      throw new Error(`File not found: ${filePath}`);
-    }
+  async validateFile(filePath) {
+    try {
+      const fileStats = await fs.stat(filePath);
 
-    const fileStats = fs.statSync(filePath);
-    if (fileStats.size === 0) {
-      throw new Error(`File is empty: ${filePath}`);
-    }
+      if (fileStats.size === 0) {
+        throw new Error(`File is empty: ${filePath}`);
+      }
 
-    console.log(`Validated file: ${filePath} (${fileStats.size} bytes)`);
-    return fileStats;
+      console.log(`Validated file: ${filePath} (${fileStats.size} bytes)`);
+      return fileStats;
+    } catch (error) {
+      if (error.code === "ENOENT") {
+        throw new Error(`File not found: ${filePath}`);
+      }
+      throw error;
+    }
   }
 
   // Generating base64 content if requested
 
-  generateBase64(filePath, includeBase64) {
+  async generateBase64(filePath, includeBase64) {
     if (!includeBase64) return null;
 
-    const fileBuffer = fs.readFileSync(filePath);
+    const fileBuffer = await fs.readFile(filePath);
     return fileBuffer.toString("base64");
   }
 
@@ -97,10 +101,25 @@ class FileProcessor {
   }
 
   // clean up function to delete temp directories
-  cleanup(tempDirs) {
-    if (tempDirs && fs.existsSync(tempDirs.temp)) {
-      fs.rmSync(tempDirs.temp, { recursive: true, force: true });
-      console.log("Cleaned up temp directory");
+  async cleanup(tempDirs) {
+    if (!tempDirs) return;
+
+    try {
+      const tempExists = await this.exists(tempDirs.temp);
+      if (tempExists) {
+        await fs.rm(tempDirs.temp, { recursive: true, force: true });
+        console.log("Cleaned up temp directory");
+      }
+    } catch (error) {
+      console.error("Error cleaning up temp directory:", error);
+    }
+  }
+  async exists(path) {
+    try {
+      await fs.access(path);
+      return true;
+    } catch {
+      return false;
     }
   }
 }
