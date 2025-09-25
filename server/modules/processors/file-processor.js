@@ -42,7 +42,9 @@ class FileProcessor {
 
   async uploadToS3(filePath, outputFile, s3Service) {
     try {
-      const fileName = path.basename(filePath);
+      const fileName = outputFile.key
+        ? `${outputFile?.key}.${outputFile?.type}`
+        : path.basename(filePath);
       const fileBuffer = await fs.readFile(filePath);
 
       const fileObj = { name: fileName, data: fileBuffer };

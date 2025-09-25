@@ -19,8 +19,8 @@ class BinFileProcessor {
       tempDirs,
       region,
       s3Service,
-      inputFile,
       processAndUpload,
+      inputFile,
     } = processParams;
     console.log("Processing .bin file workflow");
     const timeStamp = Date.now();
@@ -34,50 +34,61 @@ class BinFileProcessor {
       changesFile,
     });
 
-    // Step 2: Convert interim Docx File back to bin
+    // Step 2: Convert interim Docx File back to bin if there is bin type in output files
+    const binFileWithChanges = outputFiles.some((f) => f.type === "bin")
+      ? await this.convertDocxToBin({
+          sourceFile: interimDocxFile,
+          tempDirs,
+          timeStamp,
+          region,
+        })
+      : null;
     // Step 3: convert interim Docx File to other outputs using DocBuilder
-    const [binFileWithChanges, convertedFiles] = await Promise.all([
-      this.convertDocxToBin({
-        sourceFile: interimDocxFile,
-        tempDirs,
-        timeStamp,
-        region,
-      }),
+    const nonBinOutputs = outputFiles.filter((f) => f.type !== "bin");
+    const nonBinconvertedFiles = await this.convertToOutputTypes({
+      outputFiles: nonBinOutputs,
+      sourceFile: interimDocxFile,
+      tempDirs,
+      timeStamp,
+    });
+    // Step 4: Process and upload all output formats
 
-      await this.convertToOutputTypes({
-        outputFiles,
-        sourceFile: interimDocxFile,
-        tempDirs,
-        timeStamp,
-      }),
-    ]);
+    let nonBinIdx = 0;
 
-    // Step 4:Upload the converted bin back [binFileWithChanges] if present to input location with same name
-    // Step 5: Convert clean docx to all output formats
-    if (changesFile) {
-      console.log("Uploading binFile With Changes to input location");
-      const uploadResult = await s3Service.uploadFile(
-        {
-          name: path.basename(inputFile.location),
-          data: await fs.readFile(binFileWithChanges),
-        },
-        path.dirname(inputFile.location)
-      );
-      // Log the upload result if needed
-      if (uploadResult) {
-        console.log(`binFile With Changes uploaded to: ${uploadResult}`);
-      }
-    }
-    const conversionResults = await Promise.all(
-      convertedFiles.map(async (convertedFile, index) => {
+    const processResults = await Promise.all(
+      outputFiles.map(async (outFile, index) => {
+        let src = null;
+
+        if (outFile.type === "bin") {
+          if (!binFileWithChanges) {
+            throw new Error("Bin file with changes not present!");
+          }
+          // src should be binFileWith changes + key and location must be from input file
+          src = binFileWithChanges;
+
+          // this needs to be uncommented if in case key and location are same as input file location
+
+          // outFile.key = path.basename(inputFile.location).split(".")[0];
+          // outFile.location = path.dirname(inputFile.location);
+        } else {
+          src = nonBinconvertedFiles[nonBinIdx++];
+          if (!src) {
+            throw new Error(
+              `Converted file not found  at index ${index} for type: ${outFile.type}`
+            );
+          }
+        }
+
         const finalOutputPath = path.join(
           "/tmp",
-          `output_${timeStamp}_${index}.${outputFiles[index].type}`
+          `output_${timeStamp}_${index}.${outFile.type}`
         );
-        await fs.copyFile(convertedFile, finalOutputPath);
-        return await processAndUpload({
+
+        await fs.copyFile(src, finalOutputPath);
+
+        return processAndUpload({
           filePath: finalOutputPath,
-          outputFile: outputFiles[index],
+          outputFile: outFile,
           timeStamp,
           index,
           s3Service,
@@ -86,7 +97,7 @@ class BinFileProcessor {
       })
     );
 
-    return conversionResults;
+    return processResults;
   }
 
   // function to convert .bin to interim DOCX with/without changes
