@@ -1,5 +1,5 @@
 const path = require("path");
-const fs = require("fs");
+const { promises: fs } = require("fs");
 const spawnAsync = require("@expo/spawn-async");
 const config = require("config");
 const { getStringFromFormat } = require("../../resources/utils");
@@ -30,7 +30,7 @@ class DocBuilderConverter {
       tempDir,
       `conversion_script_${key}.docbuilder`
     );
-    fs.writeFileSync(scriptFile, script, "utf8");
+    await fs.writeFile(scriptFile, script, "utf8");
 
     console.log(`Generated DocBuilder script: ${scriptFile}`);
     console.log("Script content:", script);

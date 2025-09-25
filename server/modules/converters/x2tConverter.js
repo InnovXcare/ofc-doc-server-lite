@@ -1,5 +1,5 @@
 const path = require("path");
-const fs = require("fs");
+const { promises: fs } = require("fs");
 const spawnAsync = require("@expo/spawn-async");
 const config = require("config");
 const bytes = require("bytes");
@@ -67,7 +67,7 @@ class X2TConverter {
     // creating params file
     const paramsFile = path.join(tempDir, "params.xml");
     const paramsXml = this.createParamsXml(conversionData);
-    fs.writeFileSync(paramsFile, paramsXml, { encoding: "utf8" });
+    await fs.writeFile(paramsFile, paramsXml, { encoding: "utf8" });
 
     // preparing command arguments
     let childArgs = [];

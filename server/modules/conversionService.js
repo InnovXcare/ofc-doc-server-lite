@@ -1,5 +1,5 @@
 const path = require("path");
-const fs = require("fs");
+const { promises: fs } = require("fs");
 const X2TConverter = require("./converters/x2tConverter");
 const DocBuilderConverter = require("./converters/docBuilderConverter");
 const FileProcessor = require("./processors/fileProcessor");
@@ -80,7 +80,7 @@ class ConversionService {
       };
     } finally {
       // Cleaning up
-      this.fileProcessor.cleanup(tempDirs);
+      await this.fileProcessor.cleanup(tempDirs);
     }
   }
 
@@ -117,9 +117,9 @@ class ConversionService {
     });
 
     // Verifying and moving output file
-    this.fileProcessor.validateFile(tempOutputFile);
-    fs.copyFileSync(tempOutputFile, finalOutputPath);
-    const outputStats = fs.statSync(finalOutputPath);
+    await this.fileProcessor.validateFile(tempOutputFile);
+    await fs.copyFile(tempOutputFile, finalOutputPath);
+    const outputStats = await fs.stat(finalOutputPath);
 
     // Adding background image to PDF if needed
     if (file.type === "pdf" && file.backgroundImageUrl) {
