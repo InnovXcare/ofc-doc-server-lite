@@ -1,5 +1,6 @@
 const { buffer } = require("node:stream/consumers");
 const fs = require("fs");
+const ENVIRONMENT = require("../env");
 const stream = require("stream");
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 const {
@@ -16,13 +17,16 @@ class S3Service {
   constructor(bucketName = null, region = "ap-south-1") {
     const s3Config = { region };
     // To be changed later
-    s3Config.credentials = {
-      accessKeyId: "AKIA44Y6CDEC4M7H3RWE",
-      secretAccessKey: "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",
-    };
+    console.log("NODE_ENV:", process.env.NODE_ENV);
+    if (ENVIRONMENT.NODE_ENV === "development") {
+      s3Config.credentials = {
+        accessKeyId: ENVIRONMENT.S3_ACCESS_KEY_ID,
+        secretAccessKey: ENVIRONMENT.S3_ACCESS_KEY,
+      };
+    }
 
     this.s3 = new S3Client(s3Config);
-    this.bucketName = bucketName || "dicom-router-ap-south-1";
+    this.bucketName = bucketName || ENVIRONMENT.S3_BUCKET_NAME;
   }
 
   async getSignedUploadUrl(Key, expiresIn = 3600, tags = {}) {

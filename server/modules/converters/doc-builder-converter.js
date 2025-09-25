@@ -3,12 +3,16 @@ const { promises: fs } = require("fs");
 const spawnAsync = require("@expo/spawn-async");
 const config = require("config");
 const { getStringFromFormat } = require("../../resources/utils");
+const {
+  LD_LIBRARY_PATH,
+  BIN_SPAWN_PATH,
+  DOC_BUILDER_PATH,
+} = require("../../resources/constants");
 
 class DocBuilderConverter {
   constructor() {
     this.docbuilderPath =
-      config.get("FileConverter.converter.docbuilderPath") ||
-      "/var/runtime/documentserver/server/FileConverter/bin/docbuilder";
+      config.get("FileConverter.converter.docbuilderPath") || DOC_BUILDER_PATH;
     this.spawnOptions = config.util.cloneDeep(
       config.get("FileConverter.converter.spawnOptions")
     );
@@ -32,10 +36,8 @@ class DocBuilderConverter {
     console.log("Script content:", script);
     const spawnOptions = Object.assign({}, this.spawnOptions);
     spawnOptions.env = Object.assign({}, process.env, spawnOptions.env, {
-      LD_LIBRARY_PATH: "/var/runtime/lib:/var/runtime/lib64",
-      PATH:
-        process.env.PATH +
-        ":/var/runtime/documentserver/server/FileConverter/bin",
+      LD_LIBRARY_PATH: LD_LIBRARY_PATH,
+      PATH: process.env.PATH + BIN_SPAWN_PATH,
     });
 
     // Executing DocBuilder with the generated script
