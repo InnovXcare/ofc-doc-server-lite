@@ -16,8 +16,7 @@ const pipeline = promisify(stream.pipeline);
 class S3Service {
   constructor(bucketName = null, region = "ap-south-1") {
     const s3Config = { region };
-    // To be changed later
-    console.log("NODE_ENV:", process.env.NODE_ENV);
+
     if (ENVIRONMENT.NODE_ENV === "development") {
       s3Config.credentials = {
         accessKeyId: ENVIRONMENT.S3_ACCESS_KEY_ID,
@@ -28,24 +27,6 @@ class S3Service {
     this.s3 = new S3Client(s3Config);
     this.bucketName = bucketName || ENVIRONMENT.S3_BUCKET_NAME;
   }
-
-  async getSignedUploadUrl(Key, expiresIn = 3600, tags = {}) {
-    console.info(`S3Service.getSignedUploadUrl :: ${Key}`);
-    const command = new PutObjectCommand({
-      Bucket: this.bucketName,
-      Key,
-      Tagging: new URLSearchParams(tags).toString(),
-    });
-    return getSignedUrl(this.s3, command, { expiresIn });
-  }
-
-  async getSignedDownloadUrl(Key, expiresIn = 3600) {
-    console.info(`S3Service.getSignedDownloadUrl :: ${Key}`);
-    if (!Key) return "";
-    const command = new GetObjectCommand({ Bucket: this.bucketName, Key });
-    return getSignedUrl(this.s3, command, { expiresIn });
-  }
-
   /**
    * This methods dowloads the file from( bucket location to local system,
    * on lambda make sure the local path is inside /tmp directory
