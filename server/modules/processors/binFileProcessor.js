@@ -3,6 +3,7 @@ const { getFormatFromString, localeToLCID } = require("../../resources/utils");
 const {
   AVS_OFFICESTUDIO_FILE_CANVAS_WORD,
 } = require("../../resources/constants");
+const { promises: fs } = require("fs");
 
 class BinFileProcessor {
   constructor(x2tConverter, docBuilderConverter) {
@@ -19,6 +20,7 @@ class BinFileProcessor {
     includeBase64,
     s3Service,
     convertAndUpload,
+    inputFileLocation,
   }) {
     console.log("Processing .bin file workflow");
     const timeStamp = Date.now();
@@ -49,24 +51,40 @@ class BinFileProcessor {
         timeStamp,
       }),
     ]);
-    // TODO: Upload the converted bin [formattedBinFile] to input location
 
-    // Step 4: Convert clean docx to all output formats
-    return await Promise.all(
-      outputFiles.map(async (file, index) => {
-        return await convertAndUpload({
-          sourceFile: cleanDocxFile,
-          file,
-          tempDirs,
-          timeStamp,
-          index,
-          region,
-          fromChanges: changesFile,
-          includeBase64,
-          s3Service,
-        });
-      })
-    );
+    // Step 4:Upload the converted bin back [formattedBinFile] to input location with same name
+    // Step 5: Convert clean docx to all output formats
+    const [uploadResult, conversionResults] = await Promise.all([
+      s3Service.uploadFile(
+        {
+          name: path.basename(inputFileLocation),
+          data: await fs.readFile(formattedBinFile),
+        },
+        path.dirname(inputFileLocation)
+      ),
+
+      Promise.all(
+        outputFiles.map(async (file, index) => {
+          return await convertAndUpload({
+            sourceFile: cleanDocxFile,
+            file,
+            tempDirs,
+            timeStamp,
+            index,
+            region,
+            fromChanges: changesFile,
+            includeBase64,
+            s3Service,
+          });
+        })
+      ),
+    ]);
+    // Log the upload result if needed
+    if (uploadResult) {
+      console.log(`Formatted bin file uploaded to: ${uploadResult}`);
+    }
+
+    return conversionResults;
   }
 
   // function to convert .bin to formatted DOCX

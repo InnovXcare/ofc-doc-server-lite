@@ -63,7 +63,10 @@ class ConversionService {
 
       const results =
         inputFile.type === "bin"
-          ? await this.binFileProcessor.process(processFileParams)
+          ? await this.binFileProcessor.process({
+              ...processFileParams,
+              inputFileLocation: inputFile.location,
+            })
           : await this.regularFileProcessor.process(processFileParams);
 
       return {
