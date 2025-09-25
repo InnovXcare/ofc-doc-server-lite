@@ -54,7 +54,7 @@ class FileProcessor {
       return `${outputFile.location}${fileName}`;
     } catch (error) {
       console.error("S3 upload error:", error);
-      return null;
+      throw error;
     }
   }
 
@@ -76,15 +76,6 @@ class FileProcessor {
       }
       throw error;
     }
-  }
-
-  // Generating base64 content if requested
-
-  async generateBase64(filePath, includeBase64) {
-    if (!includeBase64) return null;
-
-    const fileBuffer = await fs.readFile(filePath);
-    return fileBuffer.toString("base64");
   }
 
   // Extracting S3 tags from tag array
@@ -112,6 +103,7 @@ class FileProcessor {
       }
     } catch (error) {
       console.error("Error cleaning up temp directory:", error);
+      throw error;
     }
   }
   async exists(path) {

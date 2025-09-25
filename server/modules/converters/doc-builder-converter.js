@@ -13,17 +13,13 @@ class DocBuilderConverter {
       config.get("FileConverter.converter.spawnOptions")
     );
   }
-  async convert({ sourceFile, outputFile, outputFormat, tempDir, key }) {
+  async convert({ sourceFile, outputFiles, tempDir, key }) {
     console.log("Starting DocBuilder conversion...");
     console.log(`Input DOCX file: ${sourceFile}`);
-    console.log(`Output file: ${outputFile}`);
+    console.log(`Output files: ${outputFiles.length}`);
 
     // Generating a DocBuilder script that will process the input DOCX file
-    const script = this.generateDocBuilderScript(
-      sourceFile,
-      outputFile,
-      outputFormat
-    );
+    const script = this.generateDocBuilderScript(sourceFile, outputFiles);
 
     // Writing the generated script to temp directory
     const scriptFile = path.join(
@@ -73,14 +69,13 @@ class DocBuilderConverter {
     return {
       success: true,
       converterType: "docbuilder",
+      outputFiles: outputFiles.map((f) => f.path),
       stdout: result.stdout,
       stderr: result.stderr,
     };
   }
 
-  generateDocBuilderScript(inputFile, outputFile, outputFormat) {
-    const formatString = getStringFromFormat(outputFormat);
-
+  generateDocBuilderScript(inputFile, outputFiles) {
     // IMPORTANT NOTE :::
     // please dont use try catch as docBuilder use old javascript parser and it fails
     const script = `
@@ -144,8 +139,16 @@ class DocBuilderConverter {
     console.log("Processing document to remove formatting...");
     processElement(oDocument);
 
-    console.log("Saving file as: ${formatString} to ${outputFile}");
-    builder.SaveFile("${formatString}", "${outputFile}");
+     ${outputFiles
+       .map((outputFile, index) => {
+         const formatString = getStringFromFormat(outputFile.format);
+         return `
+    console.log("Saving file ${index + 1} as: ${formatString} to ${
+           outputFile.path
+         }");
+    builder.SaveFile("${formatString}", "${outputFile.path}");`;
+       })
+       .join("")}
     
     console.log("Closing document...");
     builder.CloseFile();

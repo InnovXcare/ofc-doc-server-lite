@@ -30,7 +30,7 @@ class X2TConverter {
     tempDir,
     key,
     lcid,
-    fromChanges,
+    fromChanges = false,
   }) {
     console.log("Starting X2T conversion...");
 

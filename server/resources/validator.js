@@ -26,7 +26,6 @@ const inputFileSchema = Joi.object({
 
   location: Joi.string().required().messages({
     "any.required": "Input file location is required",
-    "string.uri": "Input file location must be a valid URL",
   }),
 });
 
@@ -60,22 +59,16 @@ const outputFileSchema = Joi.object({
     }),
 
   location: Joi.string().required().messages({
-    "string.uri": "Output location must be a valid URL",
+    "any.required": "Output S3 Location is required",
   }),
 
-  backgroundImageUrl: Joi.string()
-    .when("type", {
-      is: "pdf",
-      then: Joi.optional(),
-      otherwise: Joi.forbidden().messages({
-        "any.unknown":
-          "Background image is only supported for PDF output files",
-      }),
-    })
-    .messages({
-      "string.uri": "Background image must be a valid URL",
+  backgroundImageLocation: Joi.string().when("type", {
+    is: "pdf",
+    then: Joi.optional(),
+    otherwise: Joi.forbidden().messages({
+      "any.unknown": "Background image is only supported for PDF output files",
     }),
-
+  }),
   tags: Joi.array().items(s3TagSchema).max(10).optional().messages({
     "array.max": "Cannot exceed 10 tags per output file (AWS limit)",
   }),
@@ -84,18 +77,16 @@ const outputFileSchema = Joi.object({
 const lambdaEventSchema = Joi.object({
   inputFile: inputFileSchema.required(),
 
-  changesFileLocation: Joi.string().optional().allow("").messages({
-    "string.uri": "Changes file location must be a valid URL",
-  }),
+  changesFileLocation: Joi.string().optional(),
 
   outputFiles: Joi.array()
     .items(outputFileSchema)
     .min(1)
-    .max(2)
+    .max(6)
     .required()
     .messages({
       "array.min": "At least one output file is required",
-      "array.max": "Cannot exceed 10 output files per request",
+      "array.max": "Cannot exceed 6 output files per request",
     }),
 
   region: Joi.string()
@@ -105,16 +96,6 @@ const lambdaEventSchema = Joi.object({
       "any.only": `Region must be one of: ${AWS_REGIONS.join(", ")}`,
     }),
   bucket: Joi.string().optional(),
-
-  includeBase64: Joi.boolean().optional().default(false),
-
-  converter: Joi.string()
-    .optional()
-    .valid("x2t", "docbuilder")
-    .default("x2t")
-    .messages({
-      "any.only": 'Converter must be either "x2t" or "docbuilder"',
-    }),
 }).unknown(false);
 
 module.exports = {

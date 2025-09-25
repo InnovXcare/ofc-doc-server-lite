@@ -46,7 +46,7 @@ COPY data/external-fonts /usr/share/fonts/truetype
 
 
 #copying packageJson file
-COPY server/package.json ${LAMBDA_TASK_ROOT}/package.json
+COPY package.json ${LAMBDA_TASK_ROOT}/package.json
 
 
 

@@ -1,11 +1,11 @@
-const ConversionService = require("./conversionService");
-const X2TConverter = require("./converters/x2tConverter");
-const DocBuilderConverter = require("./converters/docBuilderConverter");
+const ConversionService = require("./conversion-service");
+const X2TConverter = require("./converters/x2t-converter");
+const DocBuilderConverter = require("./converters/doc-builder-converter");
 const { S3Service } = require("./s3-service");
-const FileProcessor = require("./processors/fileProcessor");
-const PdfProcessor = require("./processors/pdfProcessor");
-const BinFileProcessor = require("./processors/binFileProcessor");
-const RegularFileProcessor = require("./processors/regularFileProcessor");
+const FileProcessor = require("./processors/file-processor");
+const PdfProcessor = require("./processors/pdf-processor");
+const BinFileProcessor = require("./processors/bin-file-processor");
+const RegularFileProcessor = require("./processors/regular-file-processor");
 
 module.exports = {
   ConversionService,

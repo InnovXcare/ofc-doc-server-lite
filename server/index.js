@@ -7,38 +7,6 @@ const conversionService = new ConversionService();
 
 exports.lambdaHandler = async (event, context) => {
   console.log("Lambda event:", JSON.stringify(event, null, 2));
-
-  // Scenario:
-  // 2. Download the input and changes files from S3
-  // 3. If input file has .bin extension (in our case bin is always AVS_OFFICESTUDIO_FILE_CANVAS_WORD)
-  //   3.1 convert the .bin file to .docx with or without changes file using x2t - with formatting
-  //   3.2 then use docBuilder to remove highlight  and convert .docx to all output file types
-  // 4. if input file type is not .bin
-  //   4.1 convert the input file to output files with or without changes using x2t
-  // 5. if backgroundImage is present in outputFiles and  type is pdf, embed background image to it
-  // 5. upload all output files where location is present to their location
-
-  // SAMPLE PARAMS -->
-
-  //   {
-  //     "inputFile": {
-  //       "type": "docx",
-  //       "location": "ofc/input.docx"
-  //     },
-  //     "outputFiles": [
-  //       {
-  //         "key":"outputFileName"
-  //         "type": "pdf",
-  //         "location": "ofc/output",
-  //         "backgroundImageUrl": "ofc/letterhead.jpg",
-  //         "tags": [
-  //           {"Key": "reportId", "Value": "SomeId"}
-  //         ]
-  //       }
-  //     ],
-  //     "region": "us-east-1"
-  //   }
-
   try {
     // Extracting parameters
     const reqParams = extractParams(event);
