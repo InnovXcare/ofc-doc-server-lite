@@ -4,15 +4,17 @@ const pdflib = require("pdf-lib");
 class PdfProcessor {
   // function to add background image to PDF from S3
 
-  async addBackgroundImageFromS3(backgroundImageUrl, pdfPath, s3Service) {
-    if (!backgroundImageUrl || !s3Service) return;
+  async addBackgroundImageFromS3(backgroundImageLocation, pdfPath, s3Service) {
+    if (!backgroundImageLocation || !s3Service) return;
 
     try {
-      console.log(`Adding background image from S3: ${backgroundImageUrl}`);
+      console.log(
+        `Adding background image from S3: ${backgroundImageLocation}`
+      );
 
       // Downloading background image
       const tempBgFile = `/tmp/bg_${Date.now()}.jpg`;
-      await s3Service.downloadS3File(backgroundImageUrl, tempBgFile);
+      await s3Service.downloadS3File(backgroundImageLocation, tempBgFile);
       const bgBytes = await fs.readFile(tempBgFile);
       await fs.unlink(tempBgFile); // Clean up immediately
 

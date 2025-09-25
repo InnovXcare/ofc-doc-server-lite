@@ -1,11 +1,11 @@
 const path = require("path");
 const { promises: fs } = require("fs");
-const X2TConverter = require("./converters/x2tConverter");
-const DocBuilderConverter = require("./converters/docBuilderConverter");
-const FileProcessor = require("./processors/fileProcessor");
-const PdfProcessor = require("./processors/pdfProcessor");
-const BinFileProcessor = require("./processors/binFileProcessor");
-const RegularFileProcessor = require("./processors/regularFileProcessor");
+const X2TConverter = require("./converters/x2t-converter");
+const DocBuilderConverter = require("./converters/doc-builder-converter");
+const FileProcessor = require("./processors/file-processor");
+const PdfProcessor = require("./processors/pdf-processor");
+const BinFileProcessor = require("./processors/bin-file-processor");
+const RegularFileProcessor = require("./processors/regular-file-processor");
 const { getFormatFromString, localeToLCID } = require("../resources/utils");
 
 class ConversionService {
@@ -16,7 +16,9 @@ class ConversionService {
     this.pdfProcessor = new PdfProcessor();
     this.binFileProcessor = new BinFileProcessor(
       this.x2tConverter,
-      this.docBuilderConverter
+      this.docBuilderConverter,
+      this.fileProcessor,
+      this.pdfProcessor
     );
     this.regularFileProcessor = new RegularFileProcessor();
   }
@@ -30,7 +32,7 @@ class ConversionService {
       outputFiles,
       changesFileLocation,
       region,
-      includeBase64,
+
       s3Service,
     } = params;
 
@@ -56,17 +58,15 @@ class ConversionService {
         outputFiles,
         tempDirs,
         region,
-        includeBase64,
         s3Service,
+        inputFile,
         convertAndUpload: this.convertAndUpload.bind(this),
+        processAndUpload: this.processAndUpload.bind(this),
       };
 
       const results =
         inputFile.type === "bin"
-          ? await this.binFileProcessor.process({
-              ...processFileParams,
-              inputFileLocation: inputFile.location,
-            })
+          ? await this.binFileProcessor.process(processFileParams)
           : await this.regularFileProcessor.process(processFileParams);
 
       return {
@@ -93,7 +93,6 @@ class ConversionService {
     index,
     region,
     fromChanges,
-    includeBase64,
     s3Service,
   }) {
     console.log(`Converting file ${index + 1}:`, file.type);
@@ -106,7 +105,7 @@ class ConversionService {
     const finalOutputPath = path.join("/tmp", outputFileName);
 
     // Converting using X2T
-    const conversionResult = await this.x2tConverter.convert({
+    await this.x2tConverter.convert({
       sourceFile,
       outputFile: tempOutputFile,
       outputFormat: getFormatFromString(file.type),
@@ -119,38 +118,53 @@ class ConversionService {
     // Verifying and moving output file
     await this.fileProcessor.validateFile(tempOutputFile);
     await fs.copyFile(tempOutputFile, finalOutputPath);
-    const outputStats = await fs.stat(finalOutputPath);
 
-    // Adding background image to PDF if needed
-    if (file.type === "pdf" && file.backgroundImageUrl) {
+    return await this.processAndUpload({
+      filePath: finalOutputPath,
+      outputFile: file,
+      timeStamp,
+      index,
+      s3Service,
+      converterUsed: "x2t",
+    });
+  }
+
+  async processAndUpload({
+    filePath,
+    outputFile,
+    timeStamp,
+    index,
+    s3Service,
+    converterUsed = "docbuilder",
+  }) {
+    console.log(`Processing and uploading file: ${outputFile.type}`);
+
+    // Get file stats
+    const outputStats = await fs.stat(filePath);
+
+    // Add background image to PDF if needed
+    if (outputFile.type === "pdf" && outputFile.backgroundImageLocation) {
       await this.pdfProcessor.addBackgroundImageFromS3(
-        file.backgroundImageUrl,
-        finalOutputPath,
+        outputFile.backgroundImageLocation,
+        filePath,
         s3Service
       );
     }
 
-    // Generating base64 content if requested
-    const base64Content = this.fileProcessor.generateBase64(
-      finalOutputPath,
-      includeBase64
-    );
-
-    // Uploading to S3 if location provided
+    // Upload to S3 if location provided
     const s3Location =
-      file.location && s3Service
-        ? await this.fileProcessor.uploadToS3(finalOutputPath, file, s3Service)
+      outputFile.location && s3Service
+        ? await this.fileProcessor.uploadToS3(filePath, outputFile, s3Service)
         : null;
 
     return {
-      key: file.key || `output_${timeStamp}_${index}`,
-      type: file.type,
-      outputPath: finalOutputPath,
+      key: outputFile.key || `output_${timeStamp}_${index}`,
+      type: outputFile.type,
+      outputPath: filePath,
       outputSize: outputStats.size,
-      converterUsed: conversionResult.converterType,
-      base64Content,
+      converterUsed,
       s3Location,
-      tags: file.tags,
+      tags: outputFile.tags,
     };
   }
 }

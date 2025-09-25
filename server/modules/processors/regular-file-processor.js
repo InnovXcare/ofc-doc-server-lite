@@ -1,14 +1,15 @@
 class RegularFileProcessor {
-  async process({
-    sourceFile,
-    changesFile,
-    outputFiles,
-    tempDirs,
-    region,
-    includeBase64,
-    s3Service,
-    convertAndUpload,
-  }) {
+  async process() {
+    const {
+      sourceFile,
+      changesFile,
+      outputFiles,
+      tempDirs,
+      region,
+
+      s3Service,
+      convertAndUpload,
+    } = processParams;
     console.log("Processing regular file workflow");
     const timeStamp = Date.now();
 
@@ -22,7 +23,6 @@ class RegularFileProcessor {
           index,
           region,
           fromChanges: changesFile,
-          includeBase64,
           s3Service,
         });
       })
