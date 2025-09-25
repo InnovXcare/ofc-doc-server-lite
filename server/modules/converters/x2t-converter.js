@@ -4,12 +4,17 @@ const spawnAsync = require("@expo/spawn-async");
 const config = require("config");
 const bytes = require("bytes");
 const { encodeXml } = require("../../resources/utils");
+const {
+  BIN_PATH,
+  LD_LIBRARY_PATH,
+  XDG_CACHE_HOME_PATH,
+  X2T_PATH,
+  BIN_SPAWN_PATH,
+} = require("../../resources/constants");
 
 class X2TConverter {
   constructor() {
-    this.x2tPath =
-      config.get("FileConverter.converter.x2tPath") ||
-      "/var/runtime/documentserver/server/FileConverter/bin/x2t";
+    this.x2tPath = config.get("FileConverter.converter.x2tPath") || X2T_PATH;
     this.args = config.get("FileConverter.converter.args");
     this.fontDir = config.get("FileConverter.converter.fontDir");
     this.presentationThemesDir = config.get(
@@ -77,15 +82,12 @@ class X2TConverter {
     childArgs.push(paramsFile);
 
     // preparing spawn options
-    const BIN = "/var/runtime/documentserver/server/FileConverter/bin";
     const spawnOptions = Object.assign({}, this.spawnOptions);
     spawnOptions.env = Object.assign({}, process.env, spawnOptions.env, {
-      LD_LIBRARY_PATH: "/var/runtime/lib:/var/runtime/lib64",
-      PATH:
-        process.env.PATH +
-        ":/var/runtime/documentserver/server/FileConverter/bin",
-      NODE_ICU_DATA: BIN,
-      XDG_CACHE_HOME: "/tmp/.cache",
+      LD_LIBRARY_PATH: LD_LIBRARY_PATH,
+      PATH: process.env.PATH + BIN_SPAWN_PATH,
+      NODE_ICU_DATA: BIN_PATH,
+      XDG_CACHE_HOME: XDG_CACHE_HOME_PATH,
     });
     const result = await spawnAsync(this.x2tPath, childArgs, spawnOptions);
 

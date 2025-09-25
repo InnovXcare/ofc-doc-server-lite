@@ -40,11 +40,20 @@ build_image() {
 # Function to run container
 run_container() {
     print_message $YELLOW "Starting container..."
+
+    ENV_FILE=""
+    if [ -f ".env" ]; then
+        ENV_FILE="--env-file .env"
+        print_message $GREEN "Loading environment variables from .env file"
+    else
+        print_message $YELLOW "No .env file found, using default environment"
+    fi
     
     # Run container with volume mounts for development
     docker run --name $CONTAINER_NAME -d -p $PORT \
                -v "$(pwd)/server":/var/task/server \
                -v "$(pwd)/samples":/var/task/samples \
+               $ENV_FILE \
                $IMAGE_NAME
     
     if [ $? -eq 0 ]; then

@@ -1,12 +1,10 @@
 class RegularFileProcessor {
-  async process() {
+  async process(processParams) {
     const {
       sourceFile,
-      changesFile,
       outputFiles,
       tempDirs,
       region,
-
       s3Service,
       convertAndUpload,
     } = processParams;
@@ -22,7 +20,6 @@ class RegularFileProcessor {
           timeStamp,
           index,
           region,
-          fromChanges: changesFile,
           s3Service,
         });
       })

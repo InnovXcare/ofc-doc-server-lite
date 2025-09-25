@@ -92,7 +92,7 @@ class ConversionService {
     timeStamp,
     index,
     region,
-    fromChanges,
+    fromChanges = false,
     s3Service,
   }) {
     console.log(`Converting file ${index + 1}:`, file.type);
