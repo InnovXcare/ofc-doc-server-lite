@@ -47,7 +47,7 @@ class X2TConverter {
       csvDelimiterChar: null,
       paid: true,
       embeddedFonts: false,
-      fromChanges: fromChanges || false,
+      fromChanges: fromChanges ? true : false,
       fontDir: this.fontDir ? path.resolve(this.fontDir) : null,
       themeDir: this.presentationThemesDir
         ? path.resolve(this.presentationThemesDir)
