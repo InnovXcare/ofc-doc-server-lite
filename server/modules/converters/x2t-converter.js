@@ -70,7 +70,7 @@ class X2TConverter {
       timestamp: new Date(),
     };
     // creating params file
-    const paramsFile = path.join(tempDir, "params.xml");
+    const paramsFile = path.join(tempDir, `params_${key}.xml`);
     const paramsXml = this.createParamsXml(conversionData);
     await fs.writeFile(paramsFile, paramsXml, { encoding: "utf8" });
 
