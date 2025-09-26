@@ -1,15 +1,20 @@
 const path = require("path");
-const fs = require("fs");
+const { promises: fs } = require("fs");
 const spawnAsync = require("@expo/spawn-async");
 const config = require("config");
 const bytes = require("bytes");
-const { encodeXml } = require("../resources/utils");
+const { encodeXml } = require("../../resources/utils");
+const {
+  BIN_PATH,
+  LD_LIBRARY_PATH,
+  XDG_CACHE_HOME_PATH,
+  X2T_PATH,
+  BIN_SPAWN_PATH,
+} = require("../../resources/constants");
 
 class X2TConverter {
   constructor() {
-    this.x2tPath =
-      config.get("FileConverter.converter.x2tPath") ||
-      "/var/runtime/documentserver/server/FileConverter/bin/x2t";
+    this.x2tPath = config.get("FileConverter.converter.x2tPath") || X2T_PATH;
     this.args = config.get("FileConverter.converter.args");
     this.fontDir = config.get("FileConverter.converter.fontDir");
     this.presentationThemesDir = config.get(
@@ -30,7 +35,7 @@ class X2TConverter {
     tempDir,
     key,
     lcid,
-    fromChanges,
+    fromChanges = false,
   }) {
     console.log("Starting X2T conversion...");
 
@@ -47,7 +52,7 @@ class X2TConverter {
       csvDelimiterChar: null,
       paid: true,
       embeddedFonts: false,
-      fromChanges: fromChanges || false,
+      fromChanges: fromChanges ? true : false,
       fontDir: this.fontDir ? path.resolve(this.fontDir) : null,
       themeDir: this.presentationThemesDir
         ? path.resolve(this.presentationThemesDir)
@@ -65,9 +70,9 @@ class X2TConverter {
       timestamp: new Date(),
     };
     // creating params file
-    const paramsFile = path.join(tempDir, "params.xml");
+    const paramsFile = path.join(tempDir, `params_${key}.xml`);
     const paramsXml = this.createParamsXml(conversionData);
-    fs.writeFileSync(paramsFile, paramsXml, { encoding: "utf8" });
+    await fs.writeFile(paramsFile, paramsXml, { encoding: "utf8" });
 
     // preparing command arguments
     let childArgs = [];
@@ -79,13 +84,10 @@ class X2TConverter {
     // preparing spawn options
     const spawnOptions = Object.assign({}, this.spawnOptions);
     spawnOptions.env = Object.assign({}, process.env, spawnOptions.env, {
-      LD_LIBRARY_PATH: "/var/runtime/lib:/var/runtime/lib64",
-      FONTCONFIG_PATH: "/var/runtime/core-fonts",
-      HOME: "/tmp",
-      TMPDIR: "/tmp",
-      PATH:
-        process.env.PATH +
-        ":/var/runtime/documentserver/server/FileConverter/bin",
+      LD_LIBRARY_PATH: LD_LIBRARY_PATH,
+      PATH: process.env.PATH + BIN_SPAWN_PATH,
+      NODE_ICU_DATA: BIN_PATH,
+      XDG_CACHE_HOME: XDG_CACHE_HOME_PATH,
     });
     const result = await spawnAsync(this.x2tPath, childArgs, spawnOptions);
 
