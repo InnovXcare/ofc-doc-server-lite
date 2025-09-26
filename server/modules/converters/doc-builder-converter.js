@@ -1,52 +1,44 @@
 const path = require("path");
-const fs = require("fs");
+const { promises: fs } = require("fs");
 const spawnAsync = require("@expo/spawn-async");
 const config = require("config");
-const { getStringFromFormat } = require("../resources/utils");
+const { getStringFromFormat } = require("../../resources/utils");
+const {
+  LD_LIBRARY_PATH,
+  BIN_SPAWN_PATH,
+  DOC_BUILDER_PATH,
+} = require("../../resources/constants");
 
 class DocBuilderConverter {
   constructor() {
     this.docbuilderPath =
-      config.get("FileConverter.converter.docbuilderPath") ||
-      "/var/runtime/documentserver/server/FileConverter/bin/docbuilder";
+      config.get("FileConverter.converter.docbuilderPath") || DOC_BUILDER_PATH;
     this.spawnOptions = config.util.cloneDeep(
       config.get("FileConverter.converter.spawnOptions")
     );
   }
-  async convert({ sourceFile, outputFile, outputFormat, tempDir, key }) {
+  async convert({ sourceFile, outputFiles, tempDir, key }) {
     console.log("Starting DocBuilder conversion...");
     console.log(`Input DOCX file: ${sourceFile}`);
-    console.log(`Output file: ${outputFile}`);
+    console.log(`Output files: ${outputFiles.length}`);
 
     // Generating a DocBuilder script that will process the input DOCX file
-    const script = this.generateDocBuilderScript(
-      sourceFile,
-      outputFile,
-      outputFormat
-    );
+    const script = this.generateDocBuilderScript(sourceFile, outputFiles);
 
     // Writing the generated script to temp directory
     const scriptFile = path.join(
       tempDir,
       `conversion_script_${key}.docbuilder`
     );
-    fs.writeFileSync(scriptFile, script, "utf8");
+    await fs.writeFile(scriptFile, script, "utf8");
 
     console.log(`Generated DocBuilder script: ${scriptFile}`);
     console.log("Script content:", script);
     const spawnOptions = Object.assign({}, this.spawnOptions);
     spawnOptions.env = Object.assign({}, process.env, spawnOptions.env, {
-      LD_LIBRARY_PATH: "/var/runtime/lib:/var/runtime/lib64",
-      FONTCONFIG_PATH: "/var/runtime/core-fonts",
-      HOME: "/tmp",
-      TMPDIR: "/tmp",
-      PATH:
-        process.env.PATH +
-        ":/var/runtime/documentserver/server/FileConverter/bin",
+      LD_LIBRARY_PATH: LD_LIBRARY_PATH,
+      PATH: process.env.PATH + BIN_SPAWN_PATH,
     });
-
-    // Setting working directory to temp directory so relative paths work
-    spawnOptions.cwd = tempDir;
 
     // Executing DocBuilder with the generated script
     const result = await spawnAsync(
@@ -79,24 +71,21 @@ class DocBuilderConverter {
     return {
       success: true,
       converterType: "docbuilder",
+      outputFiles: outputFiles.map((f) => f.path),
       stdout: result.stdout,
       stderr: result.stderr,
     };
   }
 
-  generateDocBuilderScript(inputFile, outputFile, outputFormat) {
-    const formatString = getStringFromFormat(outputFormat);
-    const inputFileName = path.basename(inputFile);
-    const outputFileName = path.basename(outputFile);
-
+  generateDocBuilderScript(inputFile, outputFiles) {
     // IMPORTANT NOTE :::
     // please dont use try catch as docBuilder use old javascript parser and it fails
     const script = `
     
     console.log("Starting script execution.");
 
-    console.log("Opening input file: source/${inputFileName}");
-    builder.OpenFile("source/${inputFileName}");
+    console.log("Opening input file: ${inputFile}");
+    builder.OpenFile("${inputFile}");
     
     console.log("Document loaded successfully");
     const oDocument = Api.GetDocument();
@@ -148,9 +137,20 @@ class DocBuilderConverter {
             }
         }
     }
-    
-    console.log("Saving file as: ${formatString} to result/${outputFileName}");
-    builder.SaveFile("${formatString}", "result/${outputFileName}");
+
+    console.log("Processing document to remove formatting...");
+    processElement(oDocument);
+
+     ${outputFiles
+       .map((outputFile, index) => {
+         const formatString = getStringFromFormat(outputFile.format);
+         return `
+    console.log("Saving file ${index + 1} as: ${formatString} to ${
+           outputFile.path
+         }");
+    builder.SaveFile("${formatString}", "${outputFile.path}");`;
+       })
+       .join("")}
     
     console.log("Closing document...");
     builder.CloseFile();

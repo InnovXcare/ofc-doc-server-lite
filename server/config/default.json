@@ -1,0 +1,47 @@
+{
+  "FileConverter": {
+    "converter": {
+      "maxDownloadBytes": 52428800,
+      "downloadTimeout": {
+        "connectionAndInactivity": "30s",
+        "wholeCycle": "60s"
+      },
+      "downloadAttemptMaxCount": 2,
+      "downloadAttemptDelay": 1000,
+      "maxprocesscount": 1,
+      "fontDir": "/var/runtime/documentserver/core-fonts",
+      "presentationThemesDir": "/var/runtime/documentserver/sdkjs/slide/themes",
+      "x2tPath": "/var/runtime/documentserver/server/FileConverter/bin/x2t",
+      "docbuilderPath": "/var/runtime/documentserver/server/FileConverter/bin/docbuilder",
+      "args": "",
+      "spawnOptions": {
+        "timeout": 120000
+      },
+      "errorfiles": "/tmp/onlyoffice-converter/error",
+      "streamWriterBufferSize": 4194304,
+      "inputLimits": [
+        {
+          "type": "docx;dotx;docm;dotm",
+          "zip": {
+            "uncompressed": "25MB",
+            "template": "*.xml"
+          }
+        },
+        {
+          "type": "xlsx;xltx;xlsm;xltm",
+          "zip": {
+            "uncompressed": "50MB",
+            "template": "*.xml"
+          }
+        },
+        {
+          "type": "pptx;ppsx;potx;pptm;ppsm;potm",
+          "zip": {
+            "uncompressed": "25MB",
+            "template": "*.xml"
+          }
+        }
+      ]
+    }
+  }
+}
