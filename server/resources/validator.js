@@ -49,13 +49,26 @@ const outputFileSchema = Joi.object({
   }),
 
   type: Joi.string()
-    .valid(...SUPPORTED_OUTPUT_TYPES)
     .required()
+    .custom((value, helpers) => {
+      if (!SUPPORTED_OUTPUT_TYPES.includes(value)) {
+        return helpers.error("any.only");
+      }
+      const state = helpers.state.ancestors;
+      const inputType = state[state.length - 1].inputFile.type;
+
+      if (inputType && inputType !== "bin" && value === inputType) {
+        return helpers.error("any.invalid", { inputType });
+      }
+      return value;
+    }, "output type vs input type check")
     .messages({
       "any.only": `Output file type must be one of: ${SUPPORTED_OUTPUT_TYPES.join(
         ", "
       )}`,
       "any.required": "Output file type is required",
+      "any.invalid":
+        "Output type cannot be the same as input type (input: {{#inputType}})",
     }),
 
   location: Joi.string().required().messages({

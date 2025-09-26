@@ -35,22 +35,24 @@ class BinFileProcessor {
     });
 
     // Step 2: Convert interim Docx File back to bin if there is bin type in output files
-    const binFileWithChanges = outputFiles.some((f) => f.type === "bin")
-      ? await this.convertDocxToBin({
-          sourceFile: interimDocxFile,
-          tempDirs,
-          timeStamp,
-          region,
-        })
-      : null;
     // Step 3: convert interim Docx File to other outputs using DocBuilder
     const nonBinOutputs = outputFiles.filter((f) => f.type !== "bin");
-    const nonBinconvertedFiles = await this.convertToOutputTypes({
-      outputFiles: nonBinOutputs,
-      sourceFile: interimDocxFile,
-      tempDirs,
-      timeStamp,
-    });
+    const [binFileWithChanges, nonBinconvertedFiles] = await Promise.all([
+      outputFiles.some((f) => f.type === "bin")
+        ? await this.convertDocxToBin({
+            sourceFile: interimDocxFile,
+            tempDirs,
+            timeStamp,
+            region,
+          })
+        : null,
+      this.convertToOutputTypes({
+        outputFiles: nonBinOutputs,
+        sourceFile: interimDocxFile,
+        tempDirs,
+        timeStamp,
+      }),
+    ]);
     // Step 4: Process and upload all output formats
 
     let nonBinIdx = 0;
