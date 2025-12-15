@@ -23,7 +23,11 @@ function createTempDir() {
 
   fs.mkdirSync(newTemp);
   const sourceDir = path.join(newTemp, "source");
+  const changesDir = path.join(sourceDir, "changes");
+
   fs.mkdirSync(sourceDir);
+  fs.mkdirSync(changesDir, { recursive: true });
+
   const resultDir = path.join(newTemp, "result");
   fs.mkdirSync(resultDir);
 
