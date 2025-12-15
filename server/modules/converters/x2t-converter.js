@@ -112,6 +112,7 @@ class X2TConverter {
     };
   }
   createParamsXml(data) {
+    console.log("DATA::", data);
     let xml = '\ufeff<?xml version="1.0" encoding="utf-8"?>';
     xml +=
       '<TaskQueueDataConvert xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"';

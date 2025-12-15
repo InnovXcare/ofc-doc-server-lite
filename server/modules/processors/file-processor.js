@@ -27,7 +27,7 @@ class FileProcessor {
     // Download changes file if provided
     let changesFile = null;
     if (changesFileLocation) {
-      changesFile = path.join(tempDirs.source, "changes0.json");
+      changesFile = path.join(tempDirs.source, "changes/changes0.json");
       if (s3Service) {
         console.log(`Downloading changes file from S3: ${changesFileLocation}`);
         await s3Service.downloadS3File(changesFileLocation, changesFile);
