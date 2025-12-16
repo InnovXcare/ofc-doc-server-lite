@@ -62,6 +62,16 @@ COPY index.js ${LAMBDA_TASK_ROOT}
 # copying CONFIG file
 COPY server/config/default.json ${LAMBDA_TASK_ROOT}/config/default.json
 
+# ======================================================
+# INITIALIZE ONLYOFFICE ENVIRONMENT
+# ======================================================
+
+# Copy and run the initialization script
+COPY init-onlyoffice-env.sh /tmp/init-onlyoffice-env.sh
+RUN chmod +x /tmp/init-onlyoffice-env.sh && \
+    /tmp/init-onlyoffice-env.sh && \
+    rm -f /tmp/init-onlyoffice-env.sh
+
 
 CMD ["index.handler"]
 # ***************************************************************** END OF STAGE 2 *********************************************************************
