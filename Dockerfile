@@ -1,5 +1,3 @@
-
-
 # ==============================================================
 # STAGE 1: Extracting from DocumentServer
 # ==============================================================
@@ -15,6 +13,11 @@ RUN apt-get update && apt-get install -y \
     curl \
     zip \
     && rm -rf /var/lib/apt/lists/*
+
+COPY data/external-fonts /usr/share/fonts
+RUN cp -r /var/www/onlyoffice/documentserver/core-fonts /usr/share/fonts
+RUN sh /usr/bin/documentserver-generate-allfonts.sh
+
 
 # ******** END OF STAGE 1 *********
 
@@ -36,14 +39,9 @@ ENV NODE_CONFIG_DIR=/var/task/config
 
 # copying all extracted components from stage 1 [fileConverters, fonts, sdkjs]
 COPY --from=extractor /var/www/onlyoffice/documentserver/server/FileConverter/bin ${LAMBDA_RUNTIME_DIR}/documentserver/server/FileConverter/bin
-COPY --from=extractor /var/www/onlyoffice/documentserver/core-fonts /usr/share/fonts/truetype
 COPY --from=extractor /var/www/onlyoffice/documentserver/sdkjs ${LAMBDA_RUNTIME_DIR}/documentserver/sdkjs
 
 COPY --from=extractor /usr/share/fonts/ /usr/share/fonts/
-
-# copying all externalFonts
-COPY data/external-fonts /usr/share/fonts/truetype
-
 
 #copying packageJson file
 COPY package.json ${LAMBDA_TASK_ROOT}/package.json
@@ -61,16 +59,6 @@ COPY index.js ${LAMBDA_TASK_ROOT}
 
 # copying CONFIG file
 COPY server/config/default.json ${LAMBDA_TASK_ROOT}/config/default.json
-
-# ======================================================
-# INITIALIZE ONLYOFFICE ENVIRONMENT
-# ======================================================
-
-# Copy and run the initialization script
-COPY init-onlyoffice-env.sh /tmp/init-onlyoffice-env.sh
-RUN chmod +x /tmp/init-onlyoffice-env.sh && \
-    /tmp/init-onlyoffice-env.sh && \
-    rm -f /tmp/init-onlyoffice-env.sh
 
 
 CMD ["index.handler"]
