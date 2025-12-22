@@ -218,6 +218,8 @@ exports.getFormatFromString = function (ext) {
       return constants.AVS_OFFICESTUDIO_FILE_DRAW_VSSM;
     case "vstm":
       return constants.AVS_OFFICESTUDIO_FILE_DRAW_VSTM;
+    case "bin":
+      return constants.AVS_OFFICESTUDIO_FILE_CANVAS_WORD;
     default:
       return constants.AVS_OFFICESTUDIO_FILE_UNKNOWN;
   }
