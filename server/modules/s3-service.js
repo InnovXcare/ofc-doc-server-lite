@@ -17,7 +17,7 @@ class S3Service {
   constructor(bucketName = null, region = "ap-south-1") {
     const s3Config = { region };
 
-    if (ENVIRONMENT.NODE_ENV === "development") {
+    if (ENVIRONMENT.ENVIRONMENT_NODE_ENV === "development") {
       s3Config.credentials = {
         accessKeyId: ENVIRONMENT.S3_ACCESS_KEY_ID,
         secretAccessKey: ENVIRONMENT.S3_ACCESS_KEY,
@@ -25,7 +25,7 @@ class S3Service {
     }
 
     this.s3 = new S3Client(s3Config);
-    this.bucketName = bucketName || ENVIRONMENT.S3_BUCKET_NAME;
+    this.bucketName = bucketName || ENVIRONMENT.ENVIRONMENT_S3_BUKET_NAME;
   }
   /**
    * This methods dowloads the file from( bucket location to local system,

@@ -63,7 +63,10 @@ exports.lambdaHandler = async (event, context) => {
         error: 1,
         message: "Conversion failed",
         details: error.message,
-        stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
+        stack:
+          process.env.ENVIRONMENT_NODE_ENV === "development"
+            ? error.stack
+            : undefined,
       }),
     };
   }
