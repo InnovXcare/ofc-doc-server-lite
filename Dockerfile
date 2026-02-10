@@ -34,6 +34,8 @@ ENV NODE_CONFIG_DIR=/var/task/config
 # copying all extracted components from stage 1 [fileConverters, fonts, sdkjs]
 COPY --from=extractor /var/www/onlyoffice/documentserver/server/FileConverter/bin ${LAMBDA_RUNTIME_DIR}/documentserver/server/FileConverter/bin
 COPY --from=extractor /var/www/onlyoffice/documentserver/sdkjs ${LAMBDA_RUNTIME_DIR}/documentserver/sdkjs
+COPY --from=extractor /var/www/onlyoffice/documentserver/web-apps/vendor/xregexp ${LAMBDA_RUNTIME_DIR}/documentserver/web-apps/vendor/xregexp
+
 RUN mkdir -p /var/www/onlyoffice/documentserver
 COPY --from=extractor /var/www/onlyoffice/documentserver/server/FileConverter/bin /var/www/onlyoffice/documentserver/server/FileConverter/bin
 COPY --from=extractor /var/www/onlyoffice/documentserver/sdkjs /var/www/onlyoffice/documentserver/sdkjs
