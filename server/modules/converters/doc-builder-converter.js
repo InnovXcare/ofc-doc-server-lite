@@ -106,25 +106,10 @@ class DocBuilderConverter {
         for (let i = 0; i < numElements; i++) {
             const oNestedElement = oElement.GetElement(i);
             const classType = oNestedElement.GetClassType();
-            console.log("ClassType ::",classType);
             if (classType === "run") {
-                const oTextPr = oNestedElement.GetTextPr();
-                const rgbColor = oTextPr.GetColor();
-                const newTextPr = Api.CreateTextPr();
- 
-                // Check if the color matches and change it to black
-                if (['#ed7d31', '#0070c0'].includes(rgbToHex(rgbColor))) {
-                    console.log("Setting color of ::", oNestedElement.GetText());
-                    // Set the color on the text properties object
-                    // oTextPr.SetColor(0, 0, 0);
-                    newTextPr.SetColor(0, 0, 0);
-                }
-                if (oTextPr.GetHighlight() && oTextPr.GetHighlight() == "yellow") {
-                    console.log("Setting highlight of"+ oTextPr + " - "+ oTextPr.GetHighlight() + " to none");
-                    newTextPr.SetHighlight("none");
-                }
-                // Apply the new text properties object to the run
-                oNestedElement.SetTextPr(newTextPr);
+                oNestedElement.SetColor(0, 0, 0);
+                oNestedElement.SetHighlight("none");
+                oNestedElement.SetShd("nil");   
             } else if (
             classType === "paragraph" ||
             classType === "table" ||
