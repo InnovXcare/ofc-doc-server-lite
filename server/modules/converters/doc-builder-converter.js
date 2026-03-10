@@ -118,10 +118,24 @@ class DocBuilderConverter {
             classType === "blockLvlSdt"
             ) {
                 // Recursively process nested elements within these container types
-                processElement(oNestedElement?.GetContent?.() || oNestedElement);
+                processElement(oNestedElement);
             }
-        }
-    }
+            else if (classType === "table") {
+              var rowCount = oNestedElement.GetRowsCount();
+              for (var r = rowCount - 1; r >= 0; r--) {
+                var oRow = oNestedElement.GetRow(r);
+                var cellCount = oRow.GetCellsCount();
+                for (var c = cellCount - 1; c >= 0; c--) {
+                  var oCell = oRow.GetCell(c);
+                  var oCellContent = oCell.GetContent();
+                  if (oCellContent) {
+                    processElement(oCellContent);
+                  }
+                }
+              }
+            }
+          }
+      }
 
     console.log("Processing document to remove formatting...");
     processElement(oDocument);
