@@ -102,6 +102,11 @@ const lambdaEventSchema = Joi.object({
       "array.max": "Cannot exceed 6 output files per request",
     }),
 
+  headerFooterData: Joi.object({
+    header: Joi.string().allow("", null).optional(),
+    footer: Joi.string().allow("", null).optional(),
+  }).optional(),
+
   region: Joi.string()
     .valid(...AWS_REGIONS)
     .default("ap-south-1")

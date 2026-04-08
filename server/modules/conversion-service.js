@@ -32,7 +32,7 @@ class ConversionService {
       outputFiles,
       changesFileLocation,
       region,
-
+      headerFooterData,
       s3Service,
     } = params;
 
@@ -58,6 +58,7 @@ class ConversionService {
         outputFiles,
         tempDirs,
         region,
+        headerFooterData,
         s3Service,
         inputFile,
         convertAndUpload: this.convertAndUpload.bind(this),

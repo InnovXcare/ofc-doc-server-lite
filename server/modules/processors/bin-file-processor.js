@@ -18,6 +18,7 @@ class BinFileProcessor {
       outputFiles,
       tempDirs,
       region,
+      headerFooterData,
       s3Service,
       processAndUpload,
       inputFile,
@@ -51,6 +52,7 @@ class BinFileProcessor {
         sourceFile: interimDocxFile,
         tempDirs,
         timeStamp,
+        headerFooterData,
       }),
     ]);
     // Step 4: Process and upload all output formats
@@ -111,6 +113,7 @@ class BinFileProcessor {
     region,
     changesFile,
   }) {
+    
     const interimDocxFile = path.join(
       tempDirs.result,
       `interim_${timeStamp}.docx`
@@ -125,6 +128,12 @@ class BinFileProcessor {
       lcid: region ? localeToLCID(region) : null,
       fromChanges: changesFile,
     });
+
+    // #region agent log
+    let _dbgFileSize = -1;
+    try { const _s = await fs.stat(interimDocxFile); _dbgFileSize = _s.size; } catch(e) { _dbgFileSize = 'ERR:'+e.message; }
+    console.log("[DBG-1da40b] interim DOCX created, size:", _dbgFileSize, "bytes, fromChanges:", !!changesFile);
+    // #endregion
 
     return interimDocxFile;
   }
@@ -151,7 +160,7 @@ class BinFileProcessor {
 
   // function to convert to all output types using DocBuilder
 
-  async convertToOutputTypes({ outputFiles, sourceFile, tempDirs, timeStamp }) {
+  async convertToOutputTypes({ outputFiles, sourceFile, tempDirs, timeStamp, headerFooterData }) {
     const docBuilderOutputs = outputFiles.map((file, index) => ({
       path: path.join(
         tempDirs.result,
@@ -165,6 +174,7 @@ class BinFileProcessor {
       outputFiles: docBuilderOutputs,
       tempDir: tempDirs.temp,
       key: `clean_multi_${timeStamp}`,
+      headerFooterData,
     });
 
     return docBuilderOutputs.map((output) => output.path);

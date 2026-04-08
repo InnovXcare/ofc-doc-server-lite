@@ -74,6 +74,12 @@ class X2TConverter {
     const paramsXml = this.createParamsXml(conversionData);
     await fs.writeFile(paramsFile, paramsXml, { encoding: "utf8" });
 
+    // #region agent log
+    console.log("[DBG-1da40b] X2T key:", key, "fromChanges:", fromChanges, "convData.fromChanges:", conversionData.fromChanges);
+    console.log("[DBG-1da40b] X2T paramsXml:", paramsXml);
+    fetch('http://127.0.0.1:7639/ingest/0dff3b0e-ba32-42d0-bddc-331239abaa07',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'1da40b'},body:JSON.stringify({sessionId:'1da40b',location:'x2t-converter.js:76',message:'X2T params',data:{paramsXml:paramsXml.substring(0,3000),fromChanges,fromChangesConv:conversionData.fromChanges,key},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+
     // preparing command arguments
     let childArgs = [];
     if (this.args && this.args.length > 0) {
@@ -90,6 +96,11 @@ class X2TConverter {
       XDG_CACHE_HOME: XDG_CACHE_HOME_PATH,
     });
     const result = await spawnAsync(this.x2tPath, childArgs, spawnOptions);
+
+    // #region agent log
+    console.log("[DBG-1da40b] X2T result:", JSON.stringify({key,status:result.status,signal:result.signal,stdout:(result.stdout||'').substring(0,2000),stderr:(result.stderr||'').substring(0,2000)}));
+    fetch('http://127.0.0.1:7639/ingest/0dff3b0e-ba32-42d0-bddc-331239abaa07',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'1da40b'},body:JSON.stringify({sessionId:'1da40b',location:'x2t-converter.js:98',message:'X2T result',data:{key,status:result.status,stdout:(result.stdout||'').substring(0,2000),stderr:(result.stderr||'').substring(0,2000)},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
 
     // checking result
     if (result.status !== 0 && result.status !== null) {
