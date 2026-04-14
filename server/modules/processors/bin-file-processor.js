@@ -23,6 +23,8 @@ class BinFileProcessor {
       inputFile,
     } = processParams;
     console.log("Processing .bin file workflow");
+
+    const binOutputFileExists = outputFiles.some((f) => f.type === "bin");
     const timeStamp = Date.now();
 
     // Step 1: Convert bin to docx with/without changes [Interim file]
@@ -34,21 +36,32 @@ class BinFileProcessor {
       changesFile,
     });
 
+    const binFileWithChanges = binOutputFileExists
+      ? await this.convertDocxToBin({
+          sourceFile: interimDocxFile,
+          tempDirs,
+          timeStamp,
+          region,
+        })
+      : null;
+
+    const interimDocxFileForOtherFormats = binFileWithChanges
+      ? await this.createInterimFile({
+          sourceFile: binFileWithChanges,
+          tempDirs,
+          timeStamp,
+          region,
+          fileName: "interim_others",
+        })
+      : interimDocxFile;
+
     // Step 2: Convert interim Docx File back to bin if there is bin type in output files
     // Step 3: convert interim Docx File to other outputs using DocBuilder
     const nonBinOutputs = outputFiles.filter((f) => f.type !== "bin");
-    const [binFileWithChanges, nonBinconvertedFiles] = await Promise.all([
-      outputFiles.some((f) => f.type === "bin")
-        ? await this.convertDocxToBin({
-            sourceFile: interimDocxFile,
-            tempDirs,
-            timeStamp,
-            region,
-          })
-        : null,
+    const [nonBinconvertedFiles] = await Promise.all([
       this.convertToOutputTypes({
         outputFiles: nonBinOutputs,
-        sourceFile: interimDocxFile,
+        sourceFile: interimDocxFileForOtherFormats,
         tempDirs,
         timeStamp,
       }),
@@ -110,10 +123,11 @@ class BinFileProcessor {
     timeStamp,
     region,
     changesFile,
+    fileName = "interim",
   }) {
     const interimDocxFile = path.join(
       tempDirs.result,
-      `interim_${timeStamp}.docx`
+      `${fileName}_${timeStamp}.docx`
     );
 
     await this.x2tConverter.convert({
@@ -121,9 +135,9 @@ class BinFileProcessor {
       outputFile: interimDocxFile,
       outputFormat: getFormatFromString("docx"),
       tempDir: tempDirs.temp,
-      key: `bin_to_docx_${timeStamp}`,
+      key: `${fileName}_bin_to_docx_${timeStamp}`,
       lcid: region ? localeToLCID(region) : null,
-      fromChanges: changesFile,
+      fromChanges: changesFile || false,
     });
 
     return interimDocxFile;
