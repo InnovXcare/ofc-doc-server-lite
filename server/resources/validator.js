@@ -87,10 +87,32 @@ const outputFileSchema = Joi.object({
   }),
 });
 
+const changesMediaFileEntrySchema = Joi.object({
+  s3Key: Joi.string().required().messages({
+    "any.required": "changesMediaFiles[].s3Key is required",
+  }),
+  relativePath: Joi.string().required().messages({
+    "any.required":
+      "changesMediaFiles[].relativePath is required (e.g. media/image1.png)",
+  }),
+});
+
 const lambdaEventSchema = Joi.object({
   inputFile: inputFileSchema.required(),
 
   changesFileLocation: Joi.string().optional(),
+
+  /** S3 key prefix; every object under it is downloaded under source/changes/<suffix after prefix>. */
+  changesMediaPrefix: Joi.string().optional(),
+
+  /** Explicit S3 object → path under source/changes/ (use for media/… references in changes0.json). */
+  changesMediaFiles: Joi.array()
+    .items(changesMediaFileEntrySchema)
+    .max(200)
+    .optional()
+    .messages({
+      "array.max": "Cannot exceed 200 changes media files per request",
+    }),
 
   outputFiles: Joi.array()
     .items(outputFileSchema)

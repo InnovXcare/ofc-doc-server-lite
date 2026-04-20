@@ -2,6 +2,21 @@ const path = require("path");
 const { promises: fs } = require("fs");
 const { createTempDir } = require("../../resources/helpers");
 
+function assertSafeRelativePath(rel) {
+  if (rel == null || typeof rel !== "string" || !rel.trim()) {
+    throw new Error("changes media relativePath must be a non-empty string");
+  }
+  const normalized = path.posix.normalize(rel.replace(/\\/g, "/"));
+  if (path.posix.isAbsolute(normalized)) {
+    throw new Error("changes media relativePath must be relative");
+  }
+  const segments = normalized.split("/");
+  if (segments.some((s) => s === "..")) {
+    throw new Error("changes media relativePath must not contain '..'");
+  }
+  return normalized;
+}
+
 class FileProcessor {
   // creating temp directories
   createTempDirs() {
@@ -13,6 +28,8 @@ class FileProcessor {
   async prepareInputFiles({
     inputFile,
     changesFileLocation,
+    changesMediaFiles,
+    changesMediaPrefix,
     tempDirs,
     s3Service,
   }) {
@@ -22,7 +39,7 @@ class FileProcessor {
       console.log(`Downloading input file from S3: ${inputFile.location}`);
       await s3Service.downloadS3File(inputFile.location, sourceFile);
     }
-    const fileStats = this.validateFile(sourceFile);
+    const fileStats = await this.validateFile(sourceFile);
 
     // Download changes file if provided
     let changesFile = null;
@@ -32,10 +49,60 @@ class FileProcessor {
         console.log(`Downloading changes file from S3: ${changesFileLocation}`);
         await s3Service.downloadS3File(changesFileLocation, changesFile);
       }
-      this.validateFile(changesFile);
+      await this.validateFile(changesFile);
+    }
+
+    if (s3Service && (changesMediaPrefix || (changesMediaFiles && changesMediaFiles.length))) {
+      await this.downloadChangesMediaArtifacts({
+        s3Service,
+        tempDirs,
+        changesMediaPrefix,
+        changesMediaFiles,
+      });
     }
 
     return { sourceFile, changesFile, fileStats };
+  }
+
+  /**
+   * Stages files under source/changes/ so paths in changes0.json (e.g. media/…) resolve during x2t.
+   */
+  async downloadChangesMediaArtifacts({
+    s3Service,
+    tempDirs,
+    changesMediaPrefix,
+    changesMediaFiles,
+  }) {
+    const changesRoot = path.join(tempDirs.source, "changes");
+
+    if (changesMediaPrefix) {
+      const keys = await s3Service.listObjectKeysUnderPrefix(changesMediaPrefix);
+      for (const key of keys) {
+        if (!key.startsWith(changesMediaPrefix)) continue;
+        let rel = key.slice(changesMediaPrefix.length);
+        if (rel.startsWith("/")) rel = rel.slice(1);
+        if (!rel) continue;
+        const safeRel = assertSafeRelativePath(rel);
+        const dest = path.join(changesRoot, safeRel);
+        await fs.mkdir(path.dirname(dest), { recursive: true });
+        console.log(`Downloading changes media (prefix): ${key} -> ${dest}`);
+        await s3Service.downloadS3File(key, dest);
+        await this.validateFile(dest);
+      }
+    }
+
+    if (changesMediaFiles && changesMediaFiles.length) {
+      for (const item of changesMediaFiles) {
+        const safeRel = assertSafeRelativePath(item.relativePath);
+        const dest = path.join(changesRoot, safeRel);
+        await fs.mkdir(path.dirname(dest), { recursive: true });
+        console.log(
+          `Downloading changes media (explicit): ${item.s3Key} -> ${dest}`
+        );
+        await s3Service.downloadS3File(item.s3Key, dest);
+        await this.validateFile(dest);
+      }
+    }
   }
 
   // Uploading file to S3 with tags

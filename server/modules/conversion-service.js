@@ -31,6 +31,8 @@ class ConversionService {
       inputFile,
       outputFiles,
       changesFileLocation,
+      changesMediaPrefix,
+      changesMediaFiles,
       region,
 
       s3Service,
@@ -46,6 +48,8 @@ class ConversionService {
         await this.fileProcessor.prepareInputFiles({
           inputFile,
           changesFileLocation,
+          changesMediaPrefix,
+          changesMediaFiles,
           tempDirs,
           s3Service,
         });

@@ -8,6 +8,7 @@ const {
   PutObjectCommand,
   GetObjectCommand,
   PutObjectTaggingCommand,
+  ListObjectsV2Command,
 } = require("@aws-sdk/client-s3");
 const { Upload } = require("@aws-sdk/lib-storage");
 const { inspect, promisify } = require("util");
@@ -40,6 +41,35 @@ class S3Service {
     return localFilePath
       ? pipeline(fileStream, fs.createWriteStream(localFilePath))
       : buffer(fileStream);
+  }
+
+  /**
+   * Lists object keys under a prefix (paginated). Omits keys that look like empty "folder" placeholders.
+   * @param {string} prefix S3 key prefix (e.g. "jobs/abc/changes/")
+   * @returns {Promise<string[]>}
+   */
+  async listObjectKeysUnderPrefix(prefix) {
+    if (!prefix) return [];
+    const keys = [];
+    let continuationToken = undefined;
+    do {
+      const resp = await this.s3.send(
+        new ListObjectsV2Command({
+          Bucket: this.bucketName,
+          Prefix: prefix,
+          ContinuationToken: continuationToken,
+        })
+      );
+      for (const obj of resp.Contents || []) {
+        if (!obj.Key) continue;
+        if (obj.Key.endsWith("/")) continue;
+        keys.push(obj.Key);
+      }
+      continuationToken = resp.IsTruncated
+        ? resp.NextContinuationToken
+        : undefined;
+    } while (continuationToken);
+    return keys;
   }
 
   async uploadFile(file, pathPrefix = "/", tags = {}) {
