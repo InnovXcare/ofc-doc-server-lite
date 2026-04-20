@@ -24,6 +24,9 @@ class X2TConverter {
     this.spawnOptions = config.util.cloneDeep(
       config.get("FileConverter.converter.spawnOptions")
     );
+    this.allowPrivateIP = config.has("FileConverter.converter.allowPrivateIP")
+      ? config.get("FileConverter.converter.allowPrivateIP") !== false
+      : true;
   }
 
   // core function to convert
@@ -142,7 +145,8 @@ class X2TConverter {
     xml += this.createLimitsXml();
     xml += "<options>";
     xml += this.xmlProp("allowNetworkRequest", true);
-    xml += this.xmlProp("allowPrivateIP", false);
+    // When changes still reference https:// image URLs, x2t downloads them; allow VPC / private endpoints.
+    xml += this.xmlProp("allowPrivateIP", this.allowPrivateIP);
     xml += "</options>";
 
     xml += "</TaskQueueDataConvert>";

@@ -40,6 +40,33 @@ function createTempDir() {
   return { temp: newTemp, source: sourceDir, result: resultDir };
 }
 
+/**
+ * Joins sourceRoot with a relative path for extracted media files.
+ * Rejects path traversal; returns an absolute path under sourceRoot.
+ *
+ * @param {string} sourceRoot
+ * @param {string} relativePath e.g. "media/abc123.png"
+ * @returns {string}
+ */
+function safeResolveUnderSourceRoot(sourceRoot, relativePath) {
+  const norm = String(relativePath).replace(/\\/g, "/").replace(/^\/+/, "");
+  const segments = norm.split("/").filter(Boolean);
+  for (const seg of segments) {
+    if (seg === ".." || seg === ".") {
+      throw new Error(`Invalid path segment in relativePath: ${seg}`);
+    }
+  }
+  const resolved = path.resolve(sourceRoot, ...segments);
+  const rootResolved = path.resolve(sourceRoot);
+  if (
+    resolved !== rootResolved &&
+    !resolved.startsWith(rootResolved + path.sep)
+  ) {
+    throw new Error("relativePath escapes source directory");
+  }
+  return resolved;
+}
+
 // Helper function to extract params
 function extractParamsFromEvent(event) {
   let params = {};
@@ -59,5 +86,6 @@ function extractParamsFromEvent(event) {
 }
 
 exports.createTempDir = createTempDir;
+exports.safeResolveUnderSourceRoot = safeResolveUnderSourceRoot;
 
 exports.extractParams = extractParamsFromEvent;
