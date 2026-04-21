@@ -87,10 +87,41 @@ const outputFileSchema = Joi.object({
   }),
 });
 
+// S3 keys to place beside input.bin before x2t (e.g. under source/media/…).
+// relativePath must stay under source/ (no ..); use the same paths the document
+// references (often media/<hex> to match editor mapper keys).
+const changesMediaFileSchema = Joi.object({
+  location: Joi.string().min(1).required().messages({
+    "any.required": "S3 key for the media object is required",
+  }),
+  relativePath: Joi.string()
+    .min(1)
+    .max(1024)
+    .required()
+    .custom((value, helpers) => {
+      if (value.includes("..") || value.startsWith("/") || value.startsWith("\\")) {
+        return helpers.error("any.invalid");
+      }
+      return value.replace(/\\/g, "/");
+    })
+    .messages({
+      "any.invalid":
+        "relativePath must not contain '..' or start with a path separator",
+    }),
+});
+
 const lambdaEventSchema = Joi.object({
   inputFile: inputFileSchema.required(),
 
   changesFileLocation: Joi.string().optional(),
+
+  changesMediaFiles: Joi.array()
+    .items(changesMediaFileSchema)
+    .max(500)
+    .optional()
+    .messages({
+      "array.max": "Cannot exceed 500 companion media files per conversion",
+    }),
 
   outputFiles: Joi.array()
     .items(outputFileSchema)

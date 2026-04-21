@@ -31,6 +31,7 @@ class ConversionService {
       inputFile,
       outputFiles,
       changesFileLocation,
+      changesMediaFiles,
       region,
 
       s3Service,
@@ -41,11 +42,12 @@ class ConversionService {
     console.log("Starting conversion with params - ", params);
 
     try {
-      // step 1 : Downloading input file + changes File if any
+      // step 1 : Downloading input file + changes file + optional media for x2t
       const { sourceFile, changesFile, fileStats } =
         await this.fileProcessor.prepareInputFiles({
           inputFile,
           changesFileLocation,
+          changesMediaFiles,
           tempDirs,
           s3Service,
         });
