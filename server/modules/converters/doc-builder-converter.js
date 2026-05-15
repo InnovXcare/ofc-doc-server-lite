@@ -90,52 +90,108 @@ class DocBuilderConverter {
     console.log("Document loaded successfully");
     const oDocument = Api.GetDocument();
 
-    //Functions to remove backgroundColor and Text Color to black
-    function rgbToHex(_rgbaColor) {
-        const rgbColor = _rgbaColor?.Unicolor?.color?.RGBA;
-        if (!rgbColor || rgbColor.R === undefined) {
-            return null;
-        }
-         const toHex = (c) => ('0' + c.toString(16)).slice(-2);
-        return "#" + toHex(rgbColor.R) + toHex(rgbColor.G) + toHex(rgbColor.B);
-    }   
- 
- 
-    function processElement(oElement) {
-        const numElements = oElement?.GetElementsCount?.() || 0;
-        for (let i = 0; i < numElements; i++) {
-            const oNestedElement = oElement.GetElement(i);
-            const classType = oNestedElement.GetClassType();
-            if (classType === "run") {
-                oNestedElement.SetColor(0, 0, 0);
-                oNestedElement.SetHighlight("none");
-                oNestedElement.SetShd("nil");   
-            } else if (
-            classType === "paragraph" ||
-            classType === "table" ||
-            classType === "hyperlink" ||
-            classType === "inlineLvlSdt" ||
-            classType === "blockLvlSdt"
-            ) {
-                // Recursively process nested elements within these container types
-                processElement(oNestedElement);
-            }
-            else if (classType === "table") {
-              var rowCount = oNestedElement.GetRowsCount();
-              for (var r = rowCount - 1; r >= 0; r--) {
-                var oRow = oNestedElement.GetRow(r);
-                var cellCount = oRow.GetCellsCount();
-                for (var c = cellCount - 1; c >= 0; c--) {
-                  var oCell = oRow.GetCell(c);
-                  var oCellContent = oCell.GetContent();
-                  if (oCellContent) {
-                    processElement(oCellContent);
-                  }
-                }
-              }
-            }
-          }
+    // Normalize text properties without reintroducing shading artifacts.
+    function normalizeTextPr(oTextPr) {
+      if (!oTextPr) {
+        return;
       }
+
+      oTextPr.SetColor(0, 0, 0, false);
+      oTextPr.SetHighlight("none");
+      oTextPr.SetShd("nil", 0, 0, 0);
+    }
+
+    function normalizeRun(oRun) {
+      if (!oRun || !oRun.GetTextPr) {
+        return;
+      }
+
+      normalizeTextPr(oRun.GetTextPr());
+    }
+
+    // List markers can carry their own formatting separate from runs.
+    function normalizeParagraph(oParagraph) {
+      if (!oParagraph) {
+        return;
+      }
+
+      var paragraphText = "";
+      if (oParagraph.GetText) {
+        paragraphText = oParagraph.GetText({
+          "Numbering": true,
+          "TabSymbol": "\\t",
+          "NewLineSeparator": "\\n"
+        });
+      }
+
+      if (oParagraph.GetParaPr) {
+        var oParaPr = oParagraph.GetParaPr();
+        if (oParaPr) {
+          oParaPr.SetShd("clear", 0, 0, 0, true);
+          console.log("Paragraph shading cleanup applied: true");
+        } else {
+          console.log("Paragraph shading cleanup applied: false");
+        }
+      }
+
+      var oNumberingLevel = null;
+      if (oParagraph.GetNumbering) {
+        oNumberingLevel = oParagraph.GetNumbering();
+      }
+      console.log("Paragraph has numbering: " + (oNumberingLevel ? "true" : "false"));
+
+      if (oNumberingLevel) {
+        console.log(
+          "Paragraph numbering level index: " + oNumberingLevel.GetLevelIndex()
+        );
+        normalizeTextPr(oNumberingLevel.GetTextPr());
+      }
+    }
+
+    function processTable(oTable) {
+      var rowCount = oTable.GetRowsCount();
+      for (var r = rowCount - 1; r >= 0; r--) {
+        var oRow = oTable.GetRow(r);
+        var cellCount = oRow.GetCellsCount();
+        for (var c = cellCount - 1; c >= 0; c--) {
+          var oCell = oRow.GetCell(c);
+          var oCellContent = oCell.GetContent();
+          if (oCellContent) {
+            processElement(oCellContent);
+          }
+        }
+      }
+    }
+
+    function processElement(oElement) {
+      if (!oElement || !oElement.GetElementsCount) {
+        return;
+      }
+
+      var numElements = oElement.GetElementsCount();
+      for (var i = 0; i < numElements; i++) {
+        var oNestedElement = oElement.GetElement(i);
+        var classType = oNestedElement.GetClassType();
+
+        if (classType === "run") {
+          normalizeRun(oNestedElement);
+        } else if (classType === "paragraph") {
+          normalizeParagraph(oNestedElement);
+          processElement(oNestedElement);
+        } else if (classType === "table") {
+          processTable(oNestedElement);
+        } else if (
+          classType === "hyperlink" ||
+          classType === "inlineLvlSdt" ||
+          classType === "blockLvlSdt"
+        ) {
+          var oNestedContent = oNestedElement.GetContent
+            ? oNestedElement.GetContent()
+            : oNestedElement;
+          processElement(oNestedContent);
+        }
+      }
+    }
 
     console.log("Processing document to remove formatting...");
     processElement(oDocument);
