@@ -51,9 +51,27 @@ class FileProcessor {
         s3Service,
       });
       await this.mirrorMediaIntoChangesDir(tempDirs.source);
+      await this.logStagedMedia(tempDirs.source);
     }
 
     return { sourceFile, changesFile, fileStats };
+  }
+
+  // only for logging purpose
+  async logStagedMedia(sourceRoot) {
+    try {
+      const mediaDir = path.join(sourceRoot, "media");
+      const entries = await fs.readdir(mediaDir);
+      if (entries.length) {
+        console.log(
+          `Staged media for x2t (${entries.length}): ${entries.join(", ")}`
+        );
+      }
+    } catch (e) {
+      if (e.code !== "ENOENT") {
+        console.warn(`logStagedMedia: ${e.message}`);
+      }
+    }
   }
 
   /**
