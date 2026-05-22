@@ -18,7 +18,7 @@ class ConversionService {
       this.x2tConverter,
       this.docBuilderConverter,
       this.fileProcessor,
-      this.pdfProcessor
+      this.pdfProcessor,
     );
     this.regularFileProcessor = new RegularFileProcessor();
   }
@@ -111,28 +111,35 @@ class ConversionService {
   async uploadHarvestedMedia({ harvestedMedia, outputFiles, s3Service }) {
     if (!harvestedMedia.length || !s3Service) return {};
 
-    const binOutput = outputFiles.find((f) => f.type === "bin");
-    if (!binOutput?.location) {
-      console.warn(
-        "uploadHarvestedMedia: skipping - no bin output location to anchor media uploads."
+    try {
+      const binOutput = outputFiles.find((f) => f.type === "bin");
+      if (!binOutput?.location) {
+        console.warn(
+          "uploadHarvestedMedia: skipping - no bin output location to anchor media uploads.",
+        );
+        return {};
+      }
+
+      const mediaPrefix = `${binOutput.location}/media`;
+      const mediaMap = {};
+
+      const uploads = harvestedMedia.map(async (m) => {
+        const data = await fs.readFile(m.localPath);
+        await s3Service.uploadFile({ name: m.name, data }, mediaPrefix, {});
+        mediaMap[m.name] = `${mediaPrefix}/${m.name}`;
+      });
+
+      await Promise.all(uploads);
+      console.log(
+        `Uploaded ${harvestedMedia.length} merged-bin media file(s) to s3://${mediaPrefix}/`,
       );
-      return {};
+      return mediaMap;
+    } catch (error) {
+      console.error(
+        " ConversionService ~ uploadHarvestedMedia ~ error:",
+        error,
+      );
     }
-
-    const mediaPrefix = `${binOutput.location}/media`;
-    const mediaMap = {};
-
-    const uploads = harvestedMedia.map(async (m) => {
-      const data = await fs.readFile(m.localPath);
-      await s3Service.uploadFile({ name: m.name, data }, mediaPrefix, {});
-      mediaMap[m.name] = `${mediaPrefix}/${m.name}`;
-    });
-
-    await Promise.all(uploads);
-    console.log(
-      `Uploaded ${harvestedMedia.length} merged-bin media file(s) to s3://${mediaPrefix}/`
-    );
-    return mediaMap;
   }
 
   // function to handle single convert and upload
@@ -198,7 +205,7 @@ class ConversionService {
       await this.pdfProcessor.addBackgroundImageFromS3(
         outputFile.backgroundImageLocation,
         filePath,
-        s3Service
+        s3Service,
       );
     }
 
