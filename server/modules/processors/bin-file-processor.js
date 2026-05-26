@@ -1,9 +1,6 @@
 const path = require("path");
 const { promises: fs } = require("fs");
 const { getFormatFromString, localeToLCID } = require("../../resources/utils");
-const {
-  AVS_OFFICESTUDIO_FILE_CANVAS_WORD,
-} = require("../../resources/constants");
 
 class BinFileProcessor {
   constructor(x2tConverter, docBuilderConverter) {
@@ -27,7 +24,13 @@ class BinFileProcessor {
     const nonBinOutputs = outputFiles.filter((f) => f.type !== "bin");
     const timeStamp = Date.now();
 
-    // Step 1: bin + changes -> docx (interim, with all edits applied).
+    // Step 1: bin + changes -> docx (interim). When changesFile is provided,
+    // x2t internally calls apply_changes(), which writes the merged binary as
+    // a sibling file named "<basename>WithChanges.<ext>" (e.g.
+    // "EditorWithChanges.bin") right next to sourceFile, then continues with
+    // the docx serialization. Upstream x2t deletes that file immediately
+    // after, but our LD_PRELOAD shim (patches/x2t_keep_with_changes.c, wired
+    // in x2t-converter.js) suppresses that delete so we can read it back.
     const interimDocxFile = await this.createInterimFile({
       sourceFile,
       tempDirs,
@@ -36,27 +39,20 @@ class BinFileProcessor {
       changesFile,
     });
 
-    // NOTE::::: - FOR FUTURE ME - (ANY CHANGE PLEASE READ THROUGH IT) - ofc-doc-server/core/OOXML/Binary/Document/DocWrapper/DocxSerializer.cpp
-    // (CDocxSerializer::saveToFile sets pathMedia = <out_dir>/media).
-    // Step 2: docx -> bin (merged). x2t writes the merged bin and emits its reference media
-    // referenced media
-
-    const binFileWithChanges = binOutputFileExists
-      ? await this.convertDocxToBin({
-          sourceFile: interimDocxFile,
-          tempDirs,
-          timeStamp,
-          region,
-        })
+    // Step 2: locate the preserved merged bin. When no changes file was
+    // applied (apply_changes is a no-op), we fall back to the original
+    // sourceFile - it is already in the desired post-merge state for this
+    // request. The bin keeps its original "media/<hex>" references intact
+    // because no docx round-trip happened.
+    const mergedBinFile = binOutputFileExists
+      ? await this.resolveMergedBin({ sourceFile, changesFile })
       : null;
 
-    // Step 3: fetch media files emittted by x2t upload them to S3 and rewrite files_location.media to keep
-    // the editor's media/<key> URL lookup working on the next load.
-    const harvestedMedia = binFileWithChanges
-      ? await this.harvestMediaFiles({ binFilePath: binFileWithChanges })
-      : [];
-
-    // Step 4: non-bin outputs (PDF/DOCX/RTF). Consume the interim docx from Step 1
+    // Step 3: non-bin outputs (PDF/DOCX/RTF). Consume the Step 1 interim
+    // docx directly - it already has every change applied via apply_changes.
+    // The previous implementation re-derived a second docx from the merged
+    // bin ("interim_others"); that re-pass is gone, saving the docx-build
+    // time on every print.
     const nonBinconvertedFiles = await this.convertToOutputTypes({
       outputFiles: nonBinOutputs,
       sourceFile: interimDocxFile,
@@ -64,17 +60,17 @@ class BinFileProcessor {
       timeStamp,
     });
 
-    // Step 5: process and upload all output formats
+    // Step 4: stage final files in /tmp and upload via processAndUpload.
     let nonBinIdx = 0;
     const processResults = await Promise.all(
       outputFiles.map(async (outFile, index) => {
         let src = null;
 
         if (outFile.type === "bin") {
-          if (!binFileWithChanges) {
-            throw new Error("Bin file with changes not present!");
+          if (!mergedBinFile) {
+            throw new Error("Merged bin file not present!");
           }
-          src = binFileWithChanges;
+          src = mergedBinFile;
         } else {
           src = nonBinconvertedFiles[nonBinIdx++];
           if (!src) {
@@ -101,48 +97,55 @@ class BinFileProcessor {
       })
     );
 
-    return { results: processResults, harvestedMedia };
+    return processResults;
   }
 
   /**
-   * Lists every non-empty file under <binDir>/media. Each entry returned is
-   * {name, localPath, size}. These are the media files x2t wrote out alongside
-   * the merged bin during docx -> bin. The bin references them as media/<name>.
+   * Returns the path to the merged bin x2t produced during createInterimFile.
+   *
+   *   - When a changesFile was passed, x2t's apply_changes writes the merged
+   *     binary to `<sourceFileDir>/<basenameNoExt>WithChanges.<ext>`. The
+   *     LD_PRELOAD shim keeps that file alive after x2t finishes; we just
+   *     read it from disk.
+   *   - When no changesFile was passed, apply_changes is a no-op and there
+   *     is no merged file to find. The caller's sourceFile is already in the
+   *     desired state, so we return it unchanged. This also covers the edge
+   *     case where apply_changes silently set sBinTo back to sBinFrom on a
+   *     corrupted-changes fallback (see cextracttools.cpp:884-892).
    */
-  async harvestMediaFiles({ binFilePath }) {
-    const binDir = path.dirname(binFilePath);
-    const mediaDir = path.join(binDir, "media");
+  async resolveMergedBin({ sourceFile, changesFile }) {
+    if (!changesFile) return sourceFile;
+
+    const dir = path.dirname(sourceFile);
+    const ext = path.extname(sourceFile);
+    const base = path.basename(sourceFile, ext);
+    const mergedPath = path.join(dir, `${base}WithChanges${ext}`);
+
     try {
-      const entries = await fs.readdir(mediaDir, { withFileTypes: true });
-      const out = [];
-      for (const entry of entries) {
-        if (!entry.isFile()) continue;
-        const localPath = path.join(mediaDir, entry.name);
-        const stat = await fs.stat(localPath);
-        if (stat.size > 0) {
-          out.push({ name: entry.name, localPath, size: stat.size });
-        }
-      }
-      if (out.length) {
+      const stat = await fs.stat(mergedPath);
+      if (stat.size > 0) {
         console.log(
-          `Harvested ${out.length} merged-bin media file(s): ${out
-            .map((f) => `${f.name} (${f.size}B)`)
-            .join(", ")}`
+          `Using preserved merged bin: ${mergedPath} (${stat.size}B)`
         );
-      } else {
-        console.log("Harvested 0 merged-bin media files (no images in doc).");
+        return mergedPath;
       }
-      return out;
+      console.warn(
+        `Preserved merged bin exists but is empty (${stat.size}B): ${mergedPath}. Falling back to source.`
+      );
     } catch (e) {
       if (e.code !== "ENOENT") {
-        console.warn(`harvestMediaFiles: ${e.message}`);
+        console.warn(`resolveMergedBin: stat failed for ${mergedPath}: ${e.message}`);
+      } else {
+        console.log(
+          `No merged bin at ${mergedPath} (apply_changes likely produced no diff); using source bin.`
+        );
       }
-      return [];
     }
+    return sourceFile;
   }
 
   // bin -> docx (interim). When changesFile is passed, x2t runs apply_changes
-  // first so the docx reflects the merged state.
+  // first so the docx (and the preserved merged bin) reflect the merged state.
   async createInterimFile({
     sourceFile,
     tempDirs,
@@ -167,26 +170,6 @@ class BinFileProcessor {
     });
 
     return interimDocxFile;
-  }
-
-  // interim docx -> merged bin. Media for the merged bin lands at
-  // <tempDirs.result>/media/<name>; see harvestMediaFiles above.
-  async convertDocxToBin({ sourceFile, tempDirs, timeStamp, region }) {
-    const binFileWithChanges = path.join(
-      tempDirs.result,
-      `with_changes_${timeStamp}.bin`
-    );
-
-    await this.x2tConverter.convert({
-      sourceFile,
-      outputFile: binFileWithChanges,
-      outputFormat: AVS_OFFICESTUDIO_FILE_CANVAS_WORD,
-      tempDir: tempDirs.temp,
-      key: `docx_to_bin_${timeStamp}`,
-      lcid: region ? localeToLCID(region) : null,
-    });
-
-    return binFileWithChanges;
   }
 
   async convertToOutputTypes({ outputFiles, sourceFile, tempDirs, timeStamp }) {

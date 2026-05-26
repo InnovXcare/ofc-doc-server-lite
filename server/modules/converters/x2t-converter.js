@@ -91,6 +91,10 @@ class X2TConverter {
       PATH: process.env.PATH + BIN_SPAWN_PATH,
       NODE_ICU_DATA: BIN_PATH,
       XDG_CACHE_HOME: XDG_CACHE_HOME_PATH,
+      // Keep x2t's intermediate "EditorWithChanges.bin" alive so the bin
+      // processor can use it as the merged output instead of running a lossy
+      // bin -> docx -> bin round-trip. See patches/x2t_keep_with_changes.c.
+      LD_PRELOAD: "/opt/x2t_keep_with_changes.so",
     });
     const result = await spawnAsync(this.x2tPath, childArgs, spawnOptions);
 
