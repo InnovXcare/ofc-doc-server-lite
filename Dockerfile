@@ -19,6 +19,23 @@ RUN sh /usr/bin/documentserver-generate-allfonts.sh
 
 # ******** END OF STAGE 1 *********
 # ======================================================
+# build the LD_PRELOAD
+# ======================================================
+# This suppresses x2t's deletion of the intermediate "EditorWithChanges"
+# merged-bin file (produced by apply_changes in
+# ofc-doc-server/core/X2tConverter/src/cextracttools.cpp and then unconditionally
+# unlinked from ofc-doc-server/core/X2tConverter/src/lib/docx.h:185-187). With
+# the file preserved, bin-file-processor.js reads the merged bin directly and
+# avoids the lossy bin -> docx -> bin round-trip (which would otherwise lose
+# custom RGB highlights, image srcRect crops, etc.). See
+# patches/x2t_keep_with_changes.c for the full rationale.
+FROM amazonlinux:2023 AS shim_builder
+RUN dnf install -y gcc glibc-devel && dnf clean all
+COPY patches/x2t_keep_with_changes.c /tmp/x2t_keep_with_changes.c
+RUN gcc -shared -fPIC -O2 -o /opt/x2t_keep_with_changes.so \
+        /tmp/x2t_keep_with_changes.c -ldl
+
+# ======================================================
 # STAGE 2: AWS Lambda Runtime
 # ======================================================
 # ************ START OF STAGE 2 ******************
@@ -42,6 +59,7 @@ COPY --from=extractor /var/www/onlyoffice/documentserver/sdkjs /var/www/onlyoffi
 COPY --from=extractor /var/www/onlyoffice/documentserver/web-apps/vendor/xregexp /var/www/onlyoffice/documentserver/web-apps/vendor/xregexp
 
 COPY --from=extractor /usr/share/fonts/ /usr/share/fonts/
+COPY --from=shim_builder /opt/x2t_keep_with_changes.so /opt/x2t_keep_with_changes.so
 
 #copying packageJson file
 COPY package.json ${LAMBDA_TASK_ROOT}/package.json

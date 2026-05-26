@@ -66,25 +66,10 @@ class ConversionService {
         processAndUpload: this.processAndUpload.bind(this),
       };
 
-      const processOutput =
+      const results =
         inputFile.type === "bin"
           ? await this.binFileProcessor.process(processFileParams)
           : await this.regularFileProcessor.process(processFileParams);
-
-      // bin processor returns { results, harvestedMedia }; regular returns an array.
-      const results = Array.isArray(processOutput)
-        ? processOutput
-        : processOutput.results;
-      const harvestedMedia = Array.isArray(processOutput)
-        ? []
-        : processOutput.harvestedMedia || [];
-
-      // Upload the media files x2t emitted for the merged bin (docx -> bin step)
-      const mediaMap = await this.uploadHarvestedMedia({
-        harvestedMedia,
-        outputFiles,
-        s3Service,
-      });
 
       return {
         success: true,
@@ -93,46 +78,12 @@ class ConversionService {
           totalFiles: results.length,
           sourceFileSize: fileStats.size,
           inputType: inputFile.type,
-          mediaMap,
         },
       };
     } finally {
       // Cleaning up
       await this.fileProcessor.cleanup(tempDirs);
     }
-  }
-
-  /**
-   * Uploads each harvested media file to <binOutput.location>/media/<name>.
-   * Returns a map { "<name>": "<s3-key>" } the caller can use to rewrite the
-   * report's files_location.media mapping.
-  
-   */
-  async uploadHarvestedMedia({ harvestedMedia, outputFiles, s3Service }) {
-    if (!harvestedMedia.length || !s3Service) return {};
-
-    const binOutput = outputFiles.find((f) => f.type === "bin");
-    if (!binOutput?.location) {
-      console.warn(
-        "uploadHarvestedMedia: skipping - no bin output location to anchor media uploads."
-      );
-      return {};
-    }
-
-    const mediaPrefix = `${binOutput.location}/media`;
-    const mediaMap = {};
-
-    const uploads = harvestedMedia.map(async (m) => {
-      const data = await fs.readFile(m.localPath);
-      await s3Service.uploadFile({ name: m.name, data }, mediaPrefix, {});
-      mediaMap[m.name] = `${mediaPrefix}/${m.name}`;
-    });
-
-    await Promise.all(uploads);
-    console.log(
-      `Uploaded ${harvestedMedia.length} merged-bin media file(s) to s3://${mediaPrefix}/`
-    );
-    return mediaMap;
   }
 
   // function to handle single convert and upload
