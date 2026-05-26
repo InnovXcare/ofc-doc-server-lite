@@ -18,7 +18,7 @@ class ConversionService {
       this.x2tConverter,
       this.docBuilderConverter,
       this.fileProcessor,
-      this.pdfProcessor
+      this.pdfProcessor,
     );
     this.regularFileProcessor = new RegularFileProcessor();
   }
@@ -149,7 +149,7 @@ class ConversionService {
       await this.pdfProcessor.addBackgroundImageFromS3(
         outputFile.backgroundImageLocation,
         filePath,
-        s3Service
+        s3Service,
       );
     }
 
