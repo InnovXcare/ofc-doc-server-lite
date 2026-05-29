@@ -33,7 +33,7 @@ FROM amazonlinux:2023 AS shim_builder
 RUN dnf install -y gcc glibc-devel && dnf clean all
 COPY patches/x2t_keep_with_changes.c /tmp/x2t_keep_with_changes.c
 RUN gcc -shared -fPIC -O2 -o /opt/x2t_keep_with_changes.so \
-        /tmp/x2t_keep_with_changes.c -ldl
+    /tmp/x2t_keep_with_changes.c -ldl
 
 # ======================================================
 # STAGE 2: AWS Lambda Runtime
@@ -74,6 +74,8 @@ RUN if [ -f package.json ]; then npm install --omit=dev; else echo "No package.j
 # copying the lambda handlers and modules
 COPY server ${LAMBDA_TASK_ROOT}/server
 COPY index.js ${LAMBDA_TASK_ROOT}
+
+COPY patches ${LAMBDA_TASK_ROOT}/patches
 
 # copying CONFIG file
 COPY server/config/default.json ${LAMBDA_TASK_ROOT}/config/default.json

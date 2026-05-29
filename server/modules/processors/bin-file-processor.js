@@ -1,6 +1,8 @@
 const path = require("path");
 const { promises: fs } = require("fs");
 const { getFormatFromString, localeToLCID } = require("../../resources/utils");
+const { fixBlipFillTilesInDocx } = require("../../../patches/tile-fix");
+const { fixBlipFillTilesInBin } = require("../../../patches/tile-fix-bin");
 
 class BinFileProcessor {
   constructor(x2tConverter, docBuilderConverter) {
@@ -38,6 +40,7 @@ class BinFileProcessor {
       region,
       changesFile,
     });
+    await fixBlipFillTilesInDocx(interimDocxFile);
 
     // Step 2: locate the preserved merged bin. When no changes file was
     // applied (apply_changes is a no-op), we fall back to the original
@@ -85,6 +88,16 @@ class BinFileProcessor {
           `output_${timeStamp}_${index}.${outFile.type}`
         );
         await fs.copyFile(src, finalOutputPath);
+
+        // Bin counterpart of the docx tile->stretch patch: rewrite any
+        // degenerate `<a:tile>` BlipFill sub-records inside the merged bin so
+        // the editor doesn't tile a single picture when this bin is reloaded.
+        // See patches/tile-fix-bin.js for the byte-level rationale. We patch
+        // the staged /tmp copy so the upstream merged bin under tempDirs stays
+        // untouched for debugging.
+        if (outFile.type === "bin") {
+          await fixBlipFillTilesInBin(finalOutputPath);
+        }
 
         return processAndUpload({
           filePath: finalOutputPath,
@@ -134,7 +147,9 @@ class BinFileProcessor {
       );
     } catch (e) {
       if (e.code !== "ENOENT") {
-        console.warn(`resolveMergedBin: stat failed for ${mergedPath}: ${e.message}`);
+        console.warn(
+          `resolveMergedBin: stat failed for ${mergedPath}: ${e.message}`
+        );
       } else {
         console.log(
           `No merged bin at ${mergedPath} (apply_changes likely produced no diff); using source bin.`
