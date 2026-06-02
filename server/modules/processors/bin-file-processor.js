@@ -1,8 +1,8 @@
 const path = require("path");
 const { promises: fs } = require("fs");
 const { getFormatFromString, localeToLCID } = require("../../resources/utils");
-const { fixBlipFillTilesInDocx } = require("../../../patches/tile-fix");
-const { fixBlipFillTilesInBin } = require("../../../patches/tile-fix-bin");
+// const { fixBlipFillTilesInDocx } = require("../../../patches/tile-fix");
+// const { fixBlipFillTilesInBin } = require("../../../patches/tile-fix-bin");
 
 class BinFileProcessor {
   constructor(x2tConverter, docBuilderConverter) {
@@ -40,7 +40,7 @@ class BinFileProcessor {
       region,
       changesFile,
     });
-    await fixBlipFillTilesInDocx(interimDocxFile);
+    // await fixBlipFillTilesInDocx(interimDocxFile);
 
     // Step 2: locate the preserved merged bin. When no changes file was
     // applied (apply_changes is a no-op), we fall back to the original
@@ -95,9 +95,9 @@ class BinFileProcessor {
         // See patches/tile-fix-bin.js for the byte-level rationale. We patch
         // the staged /tmp copy so the upstream merged bin under tempDirs stays
         // untouched for debugging.
-        if (outFile.type === "bin") {
-          await fixBlipFillTilesInBin(finalOutputPath);
-        }
+        // if (outFile.type === "bin") {
+        //   await fixBlipFillTilesInBin(finalOutputPath);
+        // }
 
         return processAndUpload({
           filePath: finalOutputPath,
