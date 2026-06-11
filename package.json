@@ -1,6 +1,6 @@
 {
   "name": "ofc-doc-server-lite",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "ONLYOFFICE Document Converter for AWS Lambda",
   "license": "AGPL-3.0",
   "main": "index.js",
