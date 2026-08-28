@@ -196,14 +196,29 @@ class BinFileProcessor {
         `clean_${timeStamp}_${index}.${file.type}`
       ),
       format: getFormatFromString(file.type),
+      preserveFormatting: file.preserveFormatting === true,
     }));
 
-    await this.docBuilderConverter.convert({
-      sourceFile,
-      outputFiles: docBuilderOutputs,
-      tempDir: tempDirs.temp,
-      key: `clean_multi_${timeStamp}`,
-    });
+    const outputGroups = [false, true]
+      .map((preserveFormatting) => ({
+        preserveFormatting,
+        outputs: docBuilderOutputs.filter(
+          (output) => output.preserveFormatting === preserveFormatting
+        ),
+      }))
+      .filter((group) => group.outputs.length);
+
+    await Promise.all(
+      outputGroups.map((group) =>
+        this.docBuilderConverter.convert({
+          sourceFile,
+          outputFiles: group.outputs,
+          tempDir: tempDirs.temp,
+          key: `clean_multi_${timeStamp}_${group.preserveFormatting ? "preserved" : "normalized"}`,
+          preserveFormatting: group.preserveFormatting,
+        })
+      )
+    );
 
     return docBuilderOutputs.map((output) => output.path);
   }

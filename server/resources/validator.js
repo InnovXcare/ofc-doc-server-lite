@@ -75,6 +75,12 @@ const outputFileSchema = Joi.object({
     "any.required": "Output S3 Location is required",
   }),
 
+  preserveFormatting: Joi.boolean().when("type", {
+    is: "html",
+    then: Joi.optional().default(false),
+    otherwise: Joi.forbidden(),
+  }),
+
   backgroundImageLocation: Joi.string().when("type", {
     is: "pdf",
     then: Joi.optional(),
