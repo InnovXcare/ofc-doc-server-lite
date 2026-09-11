@@ -17,13 +17,13 @@ class DocBuilderConverter {
       config.get("FileConverter.converter.spawnOptions")
     );
   }
-  async convert({ sourceFile, outputFiles, tempDir, key }) {
+  async convert({ sourceFile, outputFiles, tempDir, key, preserveFormatting = false }) {
     console.log("Starting DocBuilder conversion...");
     console.log(`Input DOCX file: ${sourceFile}`);
     console.log(`Output files: ${outputFiles.length}`);
 
     // Generating a DocBuilder script that will process the input DOCX file
-    const script = this.generateDocBuilderScript(sourceFile, outputFiles);
+    const script = this.generateDocBuilderScript(sourceFile, outputFiles, preserveFormatting);
 
     // Writing the generated script to temp directory
     const scriptFile = path.join(
@@ -77,7 +77,7 @@ class DocBuilderConverter {
     };
   }
 
-  generateDocBuilderScript(inputFile, outputFiles) {
+  generateDocBuilderScript(inputFile, outputFiles, preserveFormatting = false) {
     // IMPORTANT NOTE :::
     // please dont use try catch as docBuilder use old javascript parser and it fails
     const script = `
@@ -193,8 +193,11 @@ class DocBuilderConverter {
       }
     }
 
-    console.log("Processing document to remove formatting...");
-    processElement(oDocument);
+    ${
+      preserveFormatting
+        ? 'console.log("Preserving document font colors and highlights.");'
+        : 'console.log("Processing document to remove formatting...");\n    processElement(oDocument);'
+    }
 
      ${outputFiles
        .map((outputFile, index) => {
