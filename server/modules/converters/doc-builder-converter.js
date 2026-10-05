@@ -77,9 +77,27 @@ class DocBuilderConverter {
     };
   }
 
+  // Reads the ixc-llm-svc report colors from config and returns them as [r, g, b] triplets.
+  getColorsToRemove() {
+    const colors = config.get("FileConverter.reportColors");
+    const toRgb = (hex) => {
+      const h = hex.replace("#", "");
+      return [0, 2, 4].map((i) => parseInt(h.substr(i, 2), 16));
+    };
+    return {
+      fontColors: [
+        colors.ORANGECOLOR,
+        colors.LEGACY_ORANGECOLOR,
+        colors.BLUECOLOR,
+      ].map(toRgb),
+      highlightColors: [colors.BACKGROUND_YELLOWCOLOR].map(toRgb),
+    };
+  }
+
   generateDocBuilderScript(inputFile, outputFiles, preserveFormatting = false) {
     // IMPORTANT NOTE :::
     // please dont use try catch as docBuilder use old javascript parser and it fails
+    const { fontColors, highlightColors } = this.getColorsToRemove();
     const script = `
     
     console.log("Starting script execution.");
@@ -90,15 +108,42 @@ class DocBuilderConverter {
     console.log("Document loaded successfully");
     const oDocument = Api.GetDocument();
 
-    // Normalize text properties without reintroducing shading artifacts.
+    // Colors applied by ixc-llm-svc (see FileConverter.reportColors in config).
+    // Only these are stripped; every other font color / highlight is preserved.
+    var REMOVE_FONT_COLORS = ${JSON.stringify(fontColors)};
+    var REMOVE_HIGHLIGHT_COLORS = ${JSON.stringify(highlightColors)};
+
+    function colorInList(oColor, aList) {
+      if (!oColor || oColor.Auto) {
+        return false;
+      }
+      for (var i = 0; i < aList.length; i++) {
+        if (oColor.r === aList[i][0] && oColor.g === aList[i][1] && oColor.b === aList[i][2]) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    // Removes only the specific font colors / highlights listed above.
     function normalizeTextPr(oTextPr) {
-      if (!oTextPr) {
+      if (!oTextPr || !oTextPr.TextPr) {
         return;
       }
 
-      oTextPr.SetColor(0, 0, 0, false);
-      oTextPr.SetHighlight("none");
-      oTextPr.SetShd("nil", 0, 0, 0);
+      var oPr = oTextPr.TextPr;
+
+      if (colorInList(oPr.Color, REMOVE_FONT_COLORS)) {
+        oTextPr.SetColor(0, 0, 0, false);
+      }
+
+      // The highlight may be stored as a real highlight or as character shading.
+      if (colorInList(oPr.HighLight, REMOVE_HIGHLIGHT_COLORS)) {
+        oTextPr.SetHighlight("none");
+      }
+      if (oPr.Shd && colorInList(oPr.Shd.Fill, REMOVE_HIGHLIGHT_COLORS)) {
+        oTextPr.SetShd("nil", 0, 0, 0);
+      }
     }
 
     function normalizeRun(oRun) {
@@ -113,25 +158,6 @@ class DocBuilderConverter {
     function normalizeParagraph(oParagraph) {
       if (!oParagraph) {
         return;
-      }
-
-      var paragraphText = "";
-      if (oParagraph.GetText) {
-        paragraphText = oParagraph.GetText({
-          "Numbering": true,
-          "TabSymbol": "\\t",
-          "NewLineSeparator": "\\n"
-        });
-      }
-
-      if (oParagraph.GetParaPr) {
-        var oParaPr = oParagraph.GetParaPr();
-        if (oParaPr) {
-          oParaPr.SetShd("clear", 0, 0, 0, true);
-          console.log("Paragraph shading cleanup applied: true");
-        } else {
-          console.log("Paragraph shading cleanup applied: false");
-        }
       }
 
       var oNumberingLevel = null;
@@ -196,7 +222,7 @@ class DocBuilderConverter {
     ${
       preserveFormatting
         ? 'console.log("Preserving document font colors and highlights.");'
-        : 'console.log("Processing document to remove formatting...");\n    processElement(oDocument);'
+        : 'console.log("Processing document to remove LLM font colors and highlight...");\n    processElement(oDocument);'
     }
 
      ${outputFiles

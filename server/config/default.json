@@ -43,6 +43,13 @@
           }
         }
       ]
+    },
+    "reportColors": {
+      "_comment": "Mirrors REPORT_CONFIG in ixc-llm-svc/llm/services/reportConfig.js. Only these colors are stripped on print/download.",
+      "ORANGECOLOR": "#A86700",
+      "LEGACY_ORANGECOLOR": "#F9B100",
+      "BLUECOLOR": "#48C0F0",
+      "BACKGROUND_YELLOWCOLOR": "#FFF3A0"
     }
   }
 }
