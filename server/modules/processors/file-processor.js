@@ -32,6 +32,24 @@ class FileProcessor {
     }
     const fileStats = await this.validateFile(sourceFile);
 
+    // The patient header is intentionally downloaded as a separate file. It
+    // remains separate from report.html and is inserted only into generated
+    // document formats by the conversion workflow.
+    let headerFile = null;
+    if (inputFile.headerFile) {
+      headerFile = path.join(tempDirs.source, "patient-header.html");
+      if (s3Service) {
+        console.log(
+          `Downloading patient header from S3: ${inputFile.headerFile.location}`
+        );
+        await s3Service.downloadS3File(
+          inputFile.headerFile.location,
+          headerFile
+        );
+      }
+      await this.validateFile(headerFile);
+    }
+
     // Download changes file if provided
     let changesFile = null;
     if (changesFileLocation) {
@@ -54,7 +72,7 @@ class FileProcessor {
       await this.logStagedMedia(tempDirs.source);
     }
 
-    return { sourceFile, changesFile, fileStats };
+    return { sourceFile, changesFile, headerFile, fileStats };
   }
 
   // only for logging purpose
