@@ -13,7 +13,7 @@ test("adds native header rendering before saving the intermediate DOCX", () => {
       {
         type: "paragraph",
         align: "left",
-        heading: null,
+        heading: "Heading 1",
         runs: [{ type: "text", text: "Patient: Jane Doe" }],
       },
     ]
@@ -21,6 +21,8 @@ test("adds native header rendering before saving the intermediate DOCX", () => {
 
   assert.match(script, /GetHeader\("default", true\)/);
   assert.match(script, /insertPatientHeader\(oDocument, PATIENT_HEADER_ELEMENTS\)/);
+  assert.match(script, /oDocument\.GetStyle\(oDescriptor\.heading\)/);
+  assert.doesNotMatch(script, /CreateStyle\(oDescriptor\.heading/);
   assert.match(script, /Patient: Jane Doe/);
   assert.match(script, /builder\.SaveFile\("docx", "\/tmp\/report\.docx"\)/);
 });

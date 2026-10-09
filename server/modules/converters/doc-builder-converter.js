@@ -233,9 +233,8 @@ class DocBuilderConverter {
       var oParagraph = Api.CreateParagraph();
       oParagraph.SetJc(oDescriptor.align);
       if (oDescriptor.heading) {
-        oParagraph.SetStyle(
-          Api.CreateStyle(oDescriptor.heading, "paragraph")
-        );
+        var oHeadingStyle = oDocument.GetStyle(oDescriptor.heading);
+        if (oHeadingStyle) oParagraph.SetStyle(oHeadingStyle);
       }
       fillHeaderParagraph(oParagraph, oDescriptor.runs);
       return oParagraph;
