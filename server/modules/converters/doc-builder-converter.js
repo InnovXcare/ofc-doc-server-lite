@@ -337,6 +337,11 @@ class DocBuilderConverter {
         var cellCount = oRow.GetCellsCount();
         for (var c = cellCount - 1; c >= 0; c--) {
           var oCell = oRow.GetCell(c);
+          // Match direct cell shading so inherited table styles are preserved.
+          var oCellShading = oCell.CellPr && oCell.CellPr.Shd;
+          if (oCellShading && colorInList(oCellShading.Fill, REMOVE_HIGHLIGHT_COLORS)) {
+            oCell.SetBackgroundColor(0, 0, 0, true);
+          }
           var oCellContent = oCell.GetContent();
           if (oCellContent) {
             processElement(oCellContent);
