@@ -337,9 +337,11 @@ class DocBuilderConverter {
         var cellCount = oRow.GetCellsCount();
         for (var c = cellCount - 1; c >= 0; c--) {
           var oCell = oRow.GetCell(c);
-          // Match direct cell shading so inherited table styles are preserved.
-          var oCellShading = oCell.CellPr && oCell.CellPr.Shd;
-          if (oCellShading && colorInList(oCellShading.Fill, REMOVE_HIGHLIGHT_COLORS)) {
+          // ToJSON exposes direct cell properties in the compiled SDK.
+          var oCellShading = JSON.parse(oCell.ToJSON()).shd;
+          var oFill = oCellShading && oCellShading.fill;
+          if (oFill && !oFill.auto && colorInList(oFill, REMOVE_HIGHLIGHT_COLORS)) {
+            // The final argument clears the fill. The RGB values are ignored.
             oCell.SetBackgroundColor(0, 0, 0, true);
           }
           var oCellContent = oCell.GetContent();
