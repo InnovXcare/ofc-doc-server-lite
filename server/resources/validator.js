@@ -12,6 +12,13 @@ const AWS_REGIONS = [
   "sa-east-1",
 ];
 
+// Optional HTML content rendered into the native document header. Keeping the
+// content in S3 avoids placing patient information in the Lambda payload.
+const headerFileSchema = Joi.object({
+  type: Joi.string().valid("html").required(),
+  location: Joi.string().required(),
+});
+
 // Input file schema
 const inputFileSchema = Joi.object({
   type: Joi.string()
@@ -27,6 +34,8 @@ const inputFileSchema = Joi.object({
   location: Joi.string().required().messages({
     "any.required": "Input file location is required",
   }),
+
+  headerFile: headerFileSchema.optional(),
 });
 
 // S3 tag schema

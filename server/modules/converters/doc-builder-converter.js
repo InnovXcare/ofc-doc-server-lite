@@ -17,13 +17,25 @@ class DocBuilderConverter {
       config.get("FileConverter.converter.spawnOptions")
     );
   }
-  async convert({ sourceFile, outputFiles, tempDir, key, preserveFormatting = false }) {
+  async convert({
+    sourceFile,
+    outputFiles,
+    tempDir,
+    key,
+    preserveFormatting = false,
+    headerElements = [],
+  }) {
     console.log("Starting DocBuilder conversion...");
     console.log(`Input DOCX file: ${sourceFile}`);
     console.log(`Output files: ${outputFiles.length}`);
 
     // Generating a DocBuilder script that will process the input DOCX file
-    const script = this.generateDocBuilderScript(sourceFile, outputFiles, preserveFormatting);
+    const script = this.generateDocBuilderScript(
+      sourceFile,
+      outputFiles,
+      preserveFormatting,
+      headerElements
+    );
 
     // Writing the generated script to temp directory
     const scriptFile = path.join(
@@ -77,9 +89,32 @@ class DocBuilderConverter {
     };
   }
 
-  generateDocBuilderScript(inputFile, outputFiles, preserveFormatting = false) {
+  // Reads the ixc-llm-svc report colors from config and returns them as [r, g, b] triplets.
+  getColorsToRemove() {
+    const colors = config.get("FileConverter.reportColors");
+    const toRgb = (hex) => {
+      const h = hex.replace("#", "");
+      return [0, 2, 4].map((i) => parseInt(h.substr(i, 2), 16));
+    };
+    return {
+      fontColors: [
+        colors.ORANGECOLOR,
+        colors.LEGACY_ORANGECOLOR,
+        colors.BLUECOLOR,
+      ].map(toRgb),
+      highlightColors: [colors.BACKGROUND_YELLOWCOLOR].map(toRgb),
+    };
+  }
+
+  generateDocBuilderScript(
+    inputFile,
+    outputFiles,
+    preserveFormatting = false,
+    headerElements = []
+  ) {
     // IMPORTANT NOTE :::
     // please dont use try catch as docBuilder use old javascript parser and it fails
+    const { fontColors, highlightColors } = this.getColorsToRemove();
     const script = `
     
     console.log("Starting script execution.");
@@ -90,15 +125,181 @@ class DocBuilderConverter {
     console.log("Document loaded successfully");
     const oDocument = Api.GetDocument();
 
-    // Normalize text properties without reintroducing shading artifacts.
+    var PATIENT_HEADER_ELEMENTS = ${JSON.stringify(headerElements)};
+
+    function applyHeaderRunFormat(oRun, oDescriptor) {
+      if (oDescriptor.bold) oRun.SetBold(true);
+      if (oDescriptor.italic) oRun.SetItalic(true);
+      if (oDescriptor.underline) oRun.SetUnderline(true);
+      if (oDescriptor.caps) oRun.SetCaps(true);
+      if (oDescriptor.fontSize) oRun.SetFontSize(oDescriptor.fontSize);
+    }
+
+    function fillHeaderParagraph(oParagraph, aRuns) {
+      for (var i = 0; i < aRuns.length; i++) {
+        var oRunDescriptor = aRuns[i];
+        if (oRunDescriptor.type === "linebreak") {
+          oParagraph.AddLineBreak();
+        } else {
+          var oRun = oParagraph.AddText(oRunDescriptor.text);
+          applyHeaderRunFormat(oRun, oRunDescriptor);
+        }
+      }
+    }
+
+    function renderHeaderTable(oDescriptor) {
+      var oTable = Api.CreateTable(oDescriptor.cols, oDescriptor.rows);
+      oTable.SetWidth(oDescriptor.width.unit, oDescriptor.width.value);
+      oTable.SetTableCellMarginTop(0);
+      oTable.SetTableCellMarginBottom(0);
+
+      if (oDescriptor.borders) {
+        oTable.SetTableBorderTop("single", 4, 0, 0, 0, 0);
+        oTable.SetTableBorderBottom("single", 4, 0, 0, 0, 0);
+        oTable.SetTableBorderLeft("single", 4, 0, 0, 0, 0);
+        oTable.SetTableBorderRight("single", 4, 0, 0, 0, 0);
+        oTable.SetTableBorderInsideH("single", 4, 0, 0, 0, 0);
+        oTable.SetTableBorderInsideV("single", 4, 0, 0, 0, 0);
+      }
+
+      var aMerges = [];
+      for (var r = 0; r < oDescriptor.rowData.length; r++) {
+        var oRowDescriptor = oDescriptor.rowData[r];
+        for (var c = 0; c < oRowDescriptor.cells.length; c++) {
+          var oCellDescriptor = oRowDescriptor.cells[c];
+          var nColumn = oCellDescriptor.colIndex;
+          var oCell = oTable.GetRow(r).GetCell(nColumn);
+
+          if (oCellDescriptor.width) {
+            oCell.SetWidth(
+              oCellDescriptor.width.unit,
+              oCellDescriptor.width.value
+            );
+          }
+
+          var oParagraph = oCell.GetContent().GetElement(0);
+          if (oParagraph) {
+            oParagraph.SetSpacingBefore(0);
+            oParagraph.SetSpacingAfter(0);
+            oParagraph.SetJc(oCellDescriptor.align);
+            fillHeaderParagraph(oParagraph, oCellDescriptor.runs);
+          }
+
+          if (oCellDescriptor.colspan > 1) {
+            aMerges.push({
+              row: r,
+              colStart: nColumn,
+              colspan: oCellDescriptor.colspan,
+            });
+          }
+        }
+      }
+
+      aMerges.sort(function (a, b) {
+        if (a.row !== b.row) return a.row - b.row;
+        return b.colStart - a.colStart;
+      });
+      for (var m = 0; m < aMerges.length; m++) {
+        var oMerge = aMerges[m];
+        var aCells = [];
+        for (
+          var mc = oMerge.colStart;
+          mc < oMerge.colStart + oMerge.colspan;
+          mc++
+        ) {
+          aCells.push(oTable.GetRow(oMerge.row).GetCell(mc));
+        }
+        oTable.MergeCells(aCells);
+
+        var oMergedCell = oTable
+          .GetRow(oMerge.row)
+          .GetCell(oMerge.colStart);
+        if (oMergedCell) {
+          var oMergedContent = oMergedCell.GetContent();
+          for (
+            var p = oMergedContent.GetElementsCount() - 1;
+            p > 0;
+            p--
+          ) {
+            oMergedContent.RemoveElement(p);
+          }
+        }
+      }
+
+      return oTable;
+    }
+
+    function renderHeaderParagraph(oDescriptor) {
+      var oParagraph = Api.CreateParagraph();
+      oParagraph.SetJc(oDescriptor.align);
+      if (oDescriptor.heading) {
+        var oHeadingStyle = oDocument.GetStyle(oDescriptor.heading);
+        if (oHeadingStyle) oParagraph.SetStyle(oHeadingStyle);
+      }
+      fillHeaderParagraph(oParagraph, oDescriptor.runs);
+      return oParagraph;
+    }
+
+    function insertPatientHeader(oDocument, aDescriptors) {
+      if (!aDescriptors || aDescriptors.length === 0) return;
+
+      var aSections = oDocument.GetSections();
+      if (!aSections || aSections.length === 0) return;
+
+      for (var s = 0; s < aSections.length; s++) {
+        var oHeader = aSections[s].GetHeader("default", true);
+        if (!oHeader) continue;
+        oHeader.RemoveAllElements();
+
+        for (var e = 0; e < aDescriptors.length; e++) {
+          var oDescriptor = aDescriptors[e];
+          if (oDescriptor.type === "table") {
+            oHeader.AddElement(e, renderHeaderTable(oDescriptor));
+          } else {
+            oHeader.AddElement(e, renderHeaderParagraph(oDescriptor));
+          }
+        }
+      }
+    }
+
+    insertPatientHeader(oDocument, PATIENT_HEADER_ELEMENTS);
+
+    // Colors applied by ixc-llm-svc (see FileConverter.reportColors in config).
+    // Only these are stripped; every other font color / highlight is preserved.
+    var REMOVE_FONT_COLORS = ${JSON.stringify(fontColors)};
+    var REMOVE_HIGHLIGHT_COLORS = ${JSON.stringify(highlightColors)};
+
+    function colorInList(oColor, aList) {
+      if (!oColor || oColor.Auto) {
+        return false;
+      }
+      for (var i = 0; i < aList.length; i++) {
+        if (oColor.r === aList[i][0] && oColor.g === aList[i][1] && oColor.b === aList[i][2]) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    // Removes only the specific font colors / highlights listed above.
     function normalizeTextPr(oTextPr) {
-      if (!oTextPr) {
+      if (!oTextPr || !oTextPr.TextPr) {
         return;
       }
 
-      oTextPr.SetColor(0, 0, 0, false);
-      oTextPr.SetHighlight("none");
-      oTextPr.SetShd("nil", 0, 0, 0);
+      var oPr = oTextPr.TextPr;
+
+      if (colorInList(oPr.Color, REMOVE_FONT_COLORS)) {
+        oTextPr.SetColor(0, 0, 0, false);
+      }
+
+      // The highlight may be stored as a real highlight or as character shading.
+      if (colorInList(oPr.HighLight, REMOVE_HIGHLIGHT_COLORS)) {
+        oTextPr.SetHighlight("none");
+      }
+      if (oPr.Shd && colorInList(oPr.Shd.Fill, REMOVE_HIGHLIGHT_COLORS)) {
+        oTextPr.SetShd("nil", 0, 0, 0);
+      }
     }
 
     function normalizeRun(oRun) {
@@ -113,25 +314,6 @@ class DocBuilderConverter {
     function normalizeParagraph(oParagraph) {
       if (!oParagraph) {
         return;
-      }
-
-      var paragraphText = "";
-      if (oParagraph.GetText) {
-        paragraphText = oParagraph.GetText({
-          "Numbering": true,
-          "TabSymbol": "\\t",
-          "NewLineSeparator": "\\n"
-        });
-      }
-
-      if (oParagraph.GetParaPr) {
-        var oParaPr = oParagraph.GetParaPr();
-        if (oParaPr) {
-          oParaPr.SetShd("clear", 0, 0, 0, true);
-          console.log("Paragraph shading cleanup applied: true");
-        } else {
-          console.log("Paragraph shading cleanup applied: false");
-        }
       }
 
       var oNumberingLevel = null;
@@ -196,7 +378,7 @@ class DocBuilderConverter {
     ${
       preserveFormatting
         ? 'console.log("Preserving document font colors and highlights.");'
-        : 'console.log("Processing document to remove formatting...");\n    processElement(oDocument);'
+        : 'console.log("Processing document to remove LLM font colors and highlight...");\n    processElement(oDocument);'
     }
 
      ${outputFiles

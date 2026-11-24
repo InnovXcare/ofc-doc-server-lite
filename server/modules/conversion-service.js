@@ -6,6 +6,7 @@ const FileProcessor = require("./processors/file-processor");
 const PdfProcessor = require("./processors/pdf-processor");
 const BinFileProcessor = require("./processors/bin-file-processor");
 const RegularFileProcessor = require("./processors/regular-file-processor");
+const HeaderHtmlParser = require("./header-html-parser");
 const { getFormatFromString, localeToLCID } = require("../resources/utils");
 
 class ConversionService {
@@ -20,7 +21,12 @@ class ConversionService {
       this.fileProcessor,
       this.pdfProcessor,
     );
-    this.regularFileProcessor = new RegularFileProcessor();
+    this.headerHtmlParser = new HeaderHtmlParser();
+    this.regularFileProcessor = new RegularFileProcessor(
+      this.x2tConverter,
+      this.docBuilderConverter,
+      this.fileProcessor
+    );
   }
 
   /**
@@ -43,7 +49,7 @@ class ConversionService {
 
     try {
       // step 1 : Downloading input file + changes file + optional media for x2t
-      const { sourceFile, changesFile, fileStats } =
+      const { sourceFile, changesFile, headerFile, fileStats } =
         await this.fileProcessor.prepareInputFiles({
           inputFile,
           changesFileLocation,
@@ -54,9 +60,19 @@ class ConversionService {
 
       // step 2 : Process files depending based on input file type
 
+      const headerElements = headerFile
+        ? await this.headerHtmlParser.parseFile(headerFile)
+        : [];
+      if (headerFile && headerElements.length === 0) {
+        throw new Error(
+          "Patient header HTML did not contain any supported content"
+        );
+      }
+
       const processFileParams = {
         sourceFile,
         changesFile,
+        headerElements,
         outputFiles,
         tempDirs,
         region,

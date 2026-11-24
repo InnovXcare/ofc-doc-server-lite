@@ -12,6 +12,24 @@ const {
 const { Upload } = require("@aws-sdk/lib-storage");
 const { inspect, promisify } = require("util");
 const pipeline = promisify(stream.pipeline);
+const path = require("path");
+
+const CONTENT_TYPES = {
+  ".pdf": "application/pdf",
+  ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ".rtf": "application/rtf",
+  ".html": "text/html; charset=utf-8",
+  ".json": "application/json",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+};
+
+// Get content type from extension to avoid S3 storing the files
+// with application/octet-stream
+const getContentType = (fileName) =>
+  CONTENT_TYPES[path.extname(fileName || "").toLowerCase()] ||
+  "application/octet-stream";
 
 class S3Service {
   constructor(bucketName = null, region = "ap-south-1") {
@@ -50,6 +68,7 @@ class S3Service {
         Bucket: this.bucketName,
         Key: `${pathPrefix}/${file.name}`,
         Body: file.data,
+        ContentType: getContentType(file.name),
         Tagging: new URLSearchParams(tags).toString(),
       },
       tags, // optional tags
