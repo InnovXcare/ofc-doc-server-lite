@@ -1,18 +1,24 @@
-const { ConversionService } = require("./modules");
+const { ConversionService, PdfMergeService } = require("./modules");
 const { extractParams } = require("./resources/helpers");
-const { lambdaEventSchema } = require("./resources/validator");
+const { lambdaEventSchema, mergePdfEventSchema, MERGE_OPERATION } = require("./resources/validator");
 const { S3Service } = require("./modules/s3-service");
 
 const conversionService = new ConversionService();
+const pdfMergeService = new PdfMergeService();
 
 exports.lambdaHandler = async (event, context) => {
   console.log("Lambda event:", JSON.stringify(event, null, 2));
+  let reqParams;
   try {
     // Extracting parameters
-    const reqParams = extractParams(event);
+    reqParams = extractParams(event);
     console.log("Extracted params:", reqParams);
 
-    const { error, value: params } = lambdaEventSchema.validate(reqParams, {
+    // { operation: "mergePdf", merges: [...] } merges PDFs; anything else is a conversion (unchanged).
+    const isMerge = reqParams?.operation === MERGE_OPERATION;
+    const schema = isMerge ? mergePdfEventSchema : lambdaEventSchema;
+
+    const { error, value: params } = schema.validate(reqParams, {
       abortEarly: false,
       allowUnknown: false,
       stripUnknown: true,
@@ -37,6 +43,20 @@ exports.lambdaHandler = async (event, context) => {
 
     // initializing s3 service
     const s3Service = new S3Service(params.bucket, params.region);
+
+    if (isMerge) {
+      const startTime = Date.now();
+      const result = await pdfMergeService.mergeAll(params, s3Service);
+      return {
+        statusCode: 200,
+        body: JSON.stringify({
+          error: 0,
+          message: "Merge completed successfully",
+          data: { ...result, processingTime: Date.now() - startTime },
+        }),
+      };
+    }
+
     const conversionParams = { ...params, s3Service };
 
     // Perform conversion
@@ -61,7 +81,7 @@ exports.lambdaHandler = async (event, context) => {
       statusCode: 500,
       body: JSON.stringify({
         error: 1,
-        message: "Conversion failed",
+        message: reqParams?.operation === MERGE_OPERATION ? "Merge failed" : "Conversion failed",
         details: error.message,
         stack:
           process.env.ENVIRONMENT_NODE_ENV === "development"

@@ -6,6 +6,7 @@ const FileProcessor = require("./processors/file-processor");
 const PdfProcessor = require("./processors/pdf-processor");
 const BinFileProcessor = require("./processors/bin-file-processor");
 const RegularFileProcessor = require("./processors/regular-file-processor");
+const PdfMergeService = require("./pdf-merge-service");
 
 module.exports = {
   ConversionService,
@@ -16,4 +17,5 @@ module.exports = {
   PdfProcessor,
   BinFileProcessor,
   RegularFileProcessor,
+  PdfMergeService,
 };
