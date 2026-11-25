@@ -157,7 +157,49 @@ const lambdaEventSchema = Joi.object({
   bucket: Joi.string().optional(),
 }).unknown(false);
 
+// ---------- operation: "mergePdf" (report + montage, R1-4971 SR-4.1) ----------
+const MERGE_OPERATION = "mergePdf";
+
+const pdfKeySchema = (label) =>
+  Joi.string()
+    .min(1)
+    .max(1024)
+    .pattern(/\.pdf$/i)
+    .messages({ "string.pattern.base": `${label} must be a .pdf S3 key` });
+
+// One output file: each document's report pages, then that report's montage pages.
+const mergeSchema = Joi.object({
+  output: Joi.object({
+    location: pdfKeySchema("Output location").required(),
+    tags: Joi.array().items(s3TagSchema).max(10).optional(),
+  }).required(),
+  documents: Joi.array()
+    .items(
+      Joi.object({
+        reportLocation: pdfKeySchema("Report location").required(),
+        montageLocation: pdfKeySchema("Montage location").optional(),
+      })
+    )
+    .min(1)
+    .max(20)
+    .required()
+    .messages({ "array.max": "Cannot merge more than 20 reports into one PDF" }),
+});
+
+const mergePdfEventSchema = Joi.object({
+  operation: Joi.string().valid(MERGE_OPERATION).required(),
+  merges: Joi.array().items(mergeSchema).min(1).max(6).required().messages({
+    "array.max": "Cannot exceed 6 merged output files per request",
+  }),
+  region: Joi.string()
+    .valid(...AWS_REGIONS)
+    .default("ap-south-1"),
+  bucket: Joi.string().optional(),
+}).unknown(false);
+
 module.exports = {
+  MERGE_OPERATION,
+  mergePdfEventSchema,
   lambdaEventSchema,
   SUPPORTED_INPUT_TYPES,
   SUPPORTED_OUTPUT_TYPES,

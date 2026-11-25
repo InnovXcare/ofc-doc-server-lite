@@ -75,6 +75,20 @@ class S3Service {
       leavePartsOnError: false, // optional manually handle dropped parts
     }).done();
   }
+  /**
+   * Uploads a buffer to an exact key (uploadFile builds the key from a prefix + name).
+   * @param {Array<{key: string, value: string}>} tags - same shape as outputFiles[].tags
+   */
+  async putObject(Key, Body, ContentType, tags = []) {
+    console.info(`S3Service.putObject :: ${Key}`);
+    const tagging = (tags || []).length ? new URLSearchParams(tags.map((t) => [t.key, t.value])).toString() : undefined;
+    return new Upload({
+      client: this.s3,
+      params: { Bucket: this.bucketName, Key, Body, ContentType, Tagging: tagging },
+      leavePartsOnError: false,
+    }).done();
+  }
+
   async addTagsToExistingFile(fileKey, tags) {
     const tagSet = Object.entries(tags).map(([Key, Value]) => ({
       Key,
